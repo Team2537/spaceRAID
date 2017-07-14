@@ -23,9 +23,9 @@ __author__ = "Matthew Schweiss"
 __version__ = "0.5"
 
 VERBOSE = 1 # EDIT HOW MUCH IS PRINTED
-IMAGE_FORM      = "image%d.png"
-IMAGE_FOLDER    = "../snapshots/All"
-TRANSCRIPT_FILE = "../snapshots/All/textInImages2.txt"
+IMAGE_FORM      = "image%d.png"                     or "image%d.jpg"
+IMAGE_FOLDER    = "./Examples/All"                  or "./Examples/Every5Sec"
+TRANSCRIPT_FILE = "./Examples/All/textInImages.txt" or "./Examples/Every5Sec/textInImages.txt"
 
 # Make absolute paths.
 try:
