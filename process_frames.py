@@ -246,7 +246,7 @@ def read_image(image, debug = False):
 # If the 5 have a 2 to 3 vote or other more complex situation, give up.
 # Also, I need to have some kind of resource pool to allow for accelerated
 # reading.
-
+class 
 def read_moment(video, timestamp):
     """Read text at a timestamped moment (seconds in the video)."""
     pass
