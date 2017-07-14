@@ -162,6 +162,7 @@ def main():
         print("ALLOW_FAILURE: Disabled")
     print("VERBOSE: %d" % VERBOSE)
 
+    failed_frames = 0
     exc_start_time = time.time()
 
     try:
@@ -191,18 +192,23 @@ def main():
             elif VERBOSE == 1:
                 # Print 1,2,3,4,5,6...9,10,20,30,40,...,100,200,300...
                 # If this is a multiple of 10, 100, or 1000 corrospundingly.
-                if img_num % (10 ** math.floor(math.log10(img_num))) == 0:
+                # log10(0) will crash so 0 is allowed expicitly.
+                if img_num == 0 or img_num % (10 ** math.floor(math.log10(img_num))) == 0:
                     print("Processed up to frame %d in %.3f seconds." %
                           (img_num, time.time() - exc_start_time))
             else:
                 # Don't Print Anything.
                 pass
+            # real_name or real_time could be None if the read failed.
+            # In this case. If it is None, do similar as if it were "".
             read_name_results.append(
-                (read_name, similar(real_name, read_name), read_name == real_name))
+                (read_name, similar(real_name, read_name or ""), read_name == real_name))
 
             read_time_results.append(
-                (read_time, similar(real_time, read_time), read_time == real_time))
-            
+                (read_time, similar(real_time, read_time or ""), read_time == real_time))
+
+            if read_name is None or read_time is None:
+                failed_frames += 1
             exc_time_results.append(frame_time)
 
     except KeyboardInterrupt:
@@ -214,24 +220,35 @@ def main():
         print("")
         # Now that we are done, print summary information.
         print("%s Frames\tPartial Matches\tPerfect Matches" % img_num)
-        name_partial_percent = average(zip(*read_name_results)[1]) * 100
-        name_perfect_percent = average(zip(*read_name_results)[2]) * 100
-        print("Name\t\t%6.2f%%\t%6.2f%%" %
-              (name_partial_percent, name_perfect_percent))
-        time_partial_percent = average(zip(*read_time_results)[1]) * 100
-        time_perfect_percent = average(zip(*read_time_results)[2]) * 100
-        print("Time\t\t%6.2f%%\t%6.2f%%" %
-              (time_partial_percent, time_perfect_percent))
-        print("Average Time:\t%.3f seconds" % average(exc_time_results))
-        print("  Total Time:\t%.3f seconds" % exc_time)
+        if read_name_results:
+            name_partial_percent = average(zip(*read_name_results)[1]) * 100
+            name_perfect_percent = average(zip(*read_name_results)[2]) * 100
+            print("Name\t\t%6.2f%%\t%6.2f%%" %
+                  (name_partial_percent, name_perfect_percent))
+        else:
+            print("Name\t\tN/A\tN/A")
+        if read_time_results:
+            time_partial_percent = average(zip(*read_time_results)[1]) * 100
+            time_perfect_percent = average(zip(*read_time_results)[2]) * 100
+            print("Time\t\t%6.2f%%\t%6.2f%%" %
+                  (time_partial_percent, time_perfect_percent))
+        else:
+            print("Time\t\tN/A\tN/A")
+        print("Processed Frames: %d" % len(exc_time_results))
+        print("Failed Frames: %d" % failed_frames)
+        if exc_time_results:
+            print(" Average Time:\t%.3f seconds" % average(exc_time_results))
+        else:
+            print(" Average Time:\tN/A seconds")
+        print("   Total Time:\t%.3f seconds" % exc_time)
 
-def test():
-    logging.getLogger().setLevel(logging.INFO)
-    transcript = Transcript("/Users/matthewschweiss/Desktop/Programming/"
-                            "Python/FIRSTReader/snapshots/All/textInImages.txt")
-    print "Last Frame\tNext_Frame\tFrame"
-    for line in transcript:
-        print transcript.last_frame, "\t", transcript.next_frame, "\t", line
+##def test():
+##    logging.getLogger().setLevel(logging.INFO)
+##    transcript = Transcript("/Users/matthewschweiss/Desktop/Programming/"
+##                            "Python/FIRSTReader/snapshots/All/textInImages.txt")
+##    print("Last Frame\tNext_Frame\tFrame")
+##    for line in transcript:
+##        print transcript.last_frame, "\t", transcript.next_frame, "\t", line
     
 if __name__ == '__main__':
     main()
