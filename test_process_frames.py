@@ -19,6 +19,9 @@ import logging
 # And the important one.
 import process_frames
 
+__author__ = "Matthew Schweiss"
+__version__ = "0.5"
+
 VERBOSE = 1 # EDIT HOW MUCH IS PRINTED
 IMAGE_FORM      = "image%d.png"
 IMAGE_FOLDER    = "../snapshots/All"

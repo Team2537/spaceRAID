@@ -40,6 +40,9 @@ import numpy as np
 import sys
 import os.path
 
+__author__ = "Jason Funk" # 2012, jasonlfunk@gmail.com
+                          # 2017, Modified by Matthew Schweiss
+__version__ = "1.0"
 DEBUG = 0
 
 # Determine pixel intensity

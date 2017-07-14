@@ -34,6 +34,9 @@ except ImportError:
 __all__ = ["read_image", "VERBOSE", "REG_NAME_ENLARGE",
            "REG_TIME_ENLARGE", "EXT_TIME_ENLARGE", "ADAPTIVE_CLASSIFIER"]
 
+__author__ = "Matthew Schweiss"
+__version__ = "0.5"
+
 REG_NAME_ENLARGE = 5
 REG_TIME_ENLARGE = 20
 EXT_TIME_ENLARGE = 14
