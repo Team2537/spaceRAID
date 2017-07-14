@@ -1,4 +1,4 @@
-#!/bin/env python
+#!/usr/bin/env python
 """
 A piece of python code to test the effectiveness of "extract_text.py"
 to better decode the video.
@@ -22,7 +22,7 @@ import process_frames
 __author__ = "Matthew Schweiss"
 __version__ = "0.5"
 
-VERBOSE = 1 # EDIT HOW MUCH IS PRINTED
+VERBOSE = 4 # EDIT HOW MUCH IS PRINTED
 IMAGE_FORM      = "image%d.png"                     or "image%d.jpg"
 IMAGE_FOLDER    = "./Examples/All"                  or "./Examples/Every5Sec"
 TRANSCRIPT_FILE = "./Examples/All/textInImages.txt" or "./Examples/Every5Sec/textInImages.txt"
@@ -86,7 +86,6 @@ class Transcript():
             frame_number = self.last_frame[0] + 1 if self.last_frame else 1
         # Finished processing, now do something with it.
         return frame_number, name_result, time_result
-        
 
     def __iter__(self):
         while not self.source.closed:
@@ -182,10 +181,15 @@ def main():
             frame_time_stop = time.time() # Timing
             frame_time = frame_time_stop - frame_time_start
             # Now use all of those breakdowns to come up with one super selection.
-            if VERBOSE == 3:
+            if VERBOSE == 5:
                 print("F %d\tActual\tRead" % img_num)
                 print("Name:\t%r\t%r" % (real_name, read_name))
                 print("Time:\t%r\t%r" % (real_time, read_time))
+            elif VERBOSE == 4:
+                print("F %d\tName A:%s\tR:%r\tTime A:%s\tR:%r" %
+                      (img_num, real_name, read_name, real_time, read_time))
+            elif VERBOSE == 3:
+                print("F %d\t%r\t%r" % (img_num, read_nume, read_time))
             elif VERBOSE == 2:
                 print("Processing frame %d in %.3f seconds." %
                       (img_num, frame_time))

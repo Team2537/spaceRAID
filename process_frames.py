@@ -42,7 +42,7 @@ REG_TIME_ENLARGE = 20
 EXT_TIME_ENLARGE = 14
 
 ADAPTIVE_CLASSIFIER = True
-ALLOW_FAILURE = True
+ALLOW_FAILURE = False
 
 # Basically, try to convert everything to one of these formats.
 NAME_FORMATS = (    "",                           "Test Match",
@@ -204,9 +204,9 @@ def smart_read_time(reg_time, ext_time):
     if time.isdigit() and (time[0] != "0" or time == "0"):
         return time
     if ALLOW_FAILURE:
-        return ""
-    else:
         return None
+    else:
+        return ""
 
 def read_image(image, debug = False):
     """Take image files and try to read the words from them.
