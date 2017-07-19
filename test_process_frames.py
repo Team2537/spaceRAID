@@ -143,7 +143,6 @@ class Transcript():
 def main():
     global read_name_results, read_time_results
     # Just to get everything on one line, here are some convinent functions.
-    p = lambda x: "%6.2f%%" % (x * 100. if x <= 1 else x)# Percentage Format
     read_name_results = []
     read_time_results = []
     
@@ -246,13 +245,5 @@ def main():
             print(" Average Time:\tN/A seconds")
         print("   Total Time:\t%.3f seconds" % exc_time)
 
-##def test():
-##    logging.getLogger().setLevel(logging.INFO)
-##    transcript = Transcript("/Users/matthewschweiss/Desktop/Programming/"
-##                            "Python/FIRSTReader/snapshots/All/textInImages.txt")
-##    print("Last Frame\tNext_Frame\tFrame")
-##    for line in transcript:
-##        print transcript.last_frame, "\t", transcript.next_frame, "\t", line
-    
 if __name__ == '__main__':
     main()

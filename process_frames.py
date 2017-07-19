@@ -1,4 +1,4 @@
-#!/bin/env python
+#!/usr/bin/env python
 """
 Take a frame and do the reading of it.
 
@@ -237,19 +237,3 @@ def read_image(image, debug = False):
     logging.info("Image Results Name: %s Time: %s" % (name, time))
     
     return name, time
-
-# So, we now have a function that can take an image and read it.
-# What we really need is a function that takes a movie and a time.
-# This needs to do multiple readings to assure the accuracy.
-
-# Current idea.
-# Find the two frames closest to the requested time and read those two.
-# Then, if they disagree or a frame failures to read, read the nearest 5
-# frames and majority rules.
-# If the 5 have a 2 to 3 vote or other more complex situation, give up.
-# Also, I need to have some kind of resource pool to allow for accelerated
-# reading.
-#class 
-def read_moment(video, timestamp):
-    """Read text at a timestamped moment (seconds in the video)."""
-    pass
