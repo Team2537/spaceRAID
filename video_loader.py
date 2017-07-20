@@ -6,8 +6,12 @@ The api for this library is as follows.
 Video(source)
     
 """
+__author__ = "Matthew Schweiss"
+__version__ = "0.5"
 # TODO
 # Add the meanings of various return codes.
+# Implement complete ffmpeg support.
+__all__ = ["Video"]
 
 import os
 # Get whatever library is avalible.
@@ -20,7 +24,22 @@ try:
     import cv2
 except ImportError:
     cv2 = None
+    import ffmpeg # Errors if neither cv2 or ffmpeg is installed.
 else:
+    try:
+        import ffmpeg
+    except ImportError:
+        ffmpeg = None
+    
+if cv2:
+    def load_image(source):
+        """Load the image from file."""
+        return cv2.imread(os.path.abspath(source))
+
+    def save_image(image, destination):
+        """Save the image to a file."""
+        return cv2.imwrite(os.path.abspath(source), image)
+    
     class Video():
         def __init__(self, source):
             self.name = os.path.basename(source)
@@ -141,6 +160,16 @@ else:
         finally:
             video.close()
             cv2.destroyAllWindows()
+            
+else: # elif ffmpeg:    
+    # For ffmpeg compatability it should be possible to use the code found at
+    # https://github.com/Zulko/moviepy/blob/master/moviepy/video/io/ffmpeg_reader.py
+    # https://github.com/dschreij/opensesame-plugin-media_player_mpy/
+
+    # These should be enough to make everything work with ffmpeg, though not well.
+    # That said. I am not taking the time now to build the ffmpeg support out.
+    class Video():
+        raise NotImplementedError("This has not been build yet.")
 
 if __name__ == '__main__':
     test()

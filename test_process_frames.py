@@ -8,19 +8,21 @@ It also uses a list of text with the text in the images manual transcribed by
 me.
 """
 import re
-import cv2
+import os
 import sys
 import time
 import math
-import os.path
 import difflib
 import logging
 
-# And the important one.
+# And the local ones.
+import video_loader
 import process_frames
 
 __author__ = "Matthew Schweiss"
 __version__ = "0.5"
+
+__all__ = ["VERBOSE", "TRANSCRIPT_FILE", "main"]
 
 VERBOSE = 4 # EDIT HOW MUCH IS PRINTED
 IMAGE_FORM      = "image%d.png"                     or "image%d.jpg"
@@ -141,12 +143,16 @@ class Transcript():
         self.close()
 
 def main():
+    """Test the process frames."""
+    
+
+    
     global read_name_results, read_time_results
     # Just to get everything on one line, here are some convinent functions.
     read_name_results = []
     read_time_results = []
     
-    exc_time_results = []
+    exc_time_results  = []
 
     if not VERBOSE:
         print("Frame")
@@ -171,7 +177,7 @@ def main():
             frame_time_start = time.time() # Timing
 
             # Actually call the function.
-            frame = cv2.imread(img_file)
+            frame = video_loader.load_image(img_file)
             if frame is None:
                 logging.error("Frame %r was not present." % img_file)
                 continue
