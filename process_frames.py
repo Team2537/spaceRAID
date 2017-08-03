@@ -31,7 +31,7 @@ try:
 except ImportError:
     import queue
     
-__all__ = ["read_image", "VERBOSE", "REG_NAME_ENLARGE",
+__all__ = ["read_image", "ALLOW_FAILURE", "VERBOSE", "REG_NAME_ENLARGE",
            "REG_TIME_ENLARGE", "EXT_TIME_ENLARGE", "ADAPTIVE_CLASSIFIER"]
 
 __author__ = "Matthew Schweiss"
@@ -42,7 +42,7 @@ REG_TIME_ENLARGE = 20
 EXT_TIME_ENLARGE = 14
 
 ADAPTIVE_CLASSIFIER = True
-ALLOW_FAILURE = False
+ALLOW_FAILURE = True
 
 # Basically, try to convert everything to one of these formats.
 NAME_FORMATS = (    "",                           "Test Match",
@@ -237,3 +237,10 @@ def read_image(image, debug = False):
     logging.info("Image Results Name: %s Time: %s" % (name, time))
     
     return name, time
+
+# Now threading.
+# For threading, I need to make a pool of workers to process frames and pass
+# them back to the correct functions.
+
+NAME_POOL
+TIME_POOL =

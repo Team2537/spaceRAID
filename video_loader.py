@@ -67,7 +67,9 @@ if cv2:
             """Set the number of frames that have passed.
                Returns a status code."""
             # Add status meaning.
-            return self.cap.set(cv2.CAP_PROP_POS_FRAMES)
+            if frame_count < 0:
+                frame_count = 0
+            return self.cap.set(cv2.CAP_PROP_POS_FRAMES, frame_count)
 
         #Relative position of the video file:
         #0 - start of the film, 1 - end of the film.
@@ -168,6 +170,8 @@ else: # elif ffmpeg:
 
     # These should be enough to make everything work with ffmpeg, though not well.
     # That said. I am not taking the time now to build the ffmpeg support out.
+    # Also, look the libraries opensesame-plugin-media_player_mpy, mediadecoder,
+    # and moviepy
     class Video():
         raise NotImplementedError("This has not been build yet.")
 
