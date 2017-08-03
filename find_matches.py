@@ -40,9 +40,9 @@ def read_moment(video, frame_count = None):
 
     # Set the video back MOMENT_MINIMUM_FRAMES//2 frames.
     if frame_count < 0:
-        frame_count = video.get_frame_count()
+        frame_count = video.get_frame_index()
 
-    video.set_frame_count(frame_count - MOMENT_MINIMUM_FRAMES // 2)
+    video.set_frame_index(frame_count - MOMENT_MINIMUM_FRAMES // 2)
 
     # Add the inital frames to the list.
     for num in range(MOMENT_MINIMUM_FRAMES):
