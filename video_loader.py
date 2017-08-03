@@ -41,6 +41,11 @@ if cv2:
         return cv2.imwrite(os.path.abspath(source), image)
     
     class Video():
+
+        __all__ = ['close', 'closed',   'get_fps',          'get_frame',
+                   'get_frame_count',   'get_frame_height', 'get_frame_width',
+                   'get_progress',      'get_timestamp',    'name', 'path',
+                   'set_frame_count',   'set_progress',     'set_timestamp']
         def __init__(self, source):
             self.name = os.path.basename(source)
             self.path = source
@@ -59,11 +64,11 @@ if cv2:
             return self.cap.set(cv2.CAP_PROP_POS_MSEC, timestamp)
 
         #0-based index of the frame to be decoded/captured next.
-        def get_frame_count(self):
+        def get_frame_index(self):
             """Get the number of frames that have passed."""
             return self.cap.get(cv2.CAP_PROP_POS_FRAMES)
 
-        def set_frame_count(self, frame_count):
+        def set_frame_index(self, frame_count):
             """Set the number of frames that have passed.
                Returns a status code."""
             # Add status meaning.
