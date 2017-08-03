@@ -118,12 +118,12 @@ def time_reader():
             # Turns out this optimization does help time readings a lot!
             # From a 68.73% perfect read to a 75.45%!
 
-read_name = name_reader().send
-read_time = time_reader().send
-
-# Start the functions by passing None
-read_name(None)
-read_time(None)
+##read_name = name_reader().send
+##read_time = time_reader().send
+##
+### Start the functions by passing None
+##read_name(None)
+##read_time(None)
        
 def smart_read_name(name_text):
     """Post Process the name text."""
@@ -208,12 +208,44 @@ def smart_read_time(reg_time, ext_time):
     else:
         return ""
 
-def read_image(image, debug = False):
+# Now threading.
+# For threading, I need to make a pool of workers to process frames and pass
+# them back to the correct functions.
+NAME_POOL_SIZE = 2
+TIME_POOL_SIZE = 2
+
+NAME_POOL = queue.Queue(NAME_POOL_SIZE)
+TIME_POOL = queue.Queue(TIME_POOL_SIZE)
+
+def init():
+    """Add the generaters to NAME_POOL and TIME_POOL for processing.
+       This can take a little bit of time.
+    """
+    try:
+        for i in range(NAME_POOL_SIZE):
+            read_name = name_reader().send # Make generater.
+            read_name(None) # Initalize with None.
+            NAME_POOL.put_nowait(read_name)
+    except queue.Full:
+        # Somehow, NAME_POOL_SIZE must have changed?
+        logger.error("NAME_POOL_SIZE changed during pool initalization.")
+
+    try:
+        for i in range(TIME_POOL_SIZE):
+            read_time = time_reader().send # Make generater.
+            read_time(None) # Initalize with None.
+            TIME_POOL.put_nowait(read_time)
+    except queue.Full:
+        # Somehow, TIME_POOL_SZE must have changed?
+        logger.error("TIME_POOL_SIZE changed during pool initalization.")
+
+def read_image(image):#, debug = False):
     """Take image files and try to read the words from them.
        Takes a numpy image.
     """
-    if debug:
-        global name, time_reg, time_ext
+    assert not NAME_POOL.empty() and not TIME_POOL.empty(), "process_frames have not been initalize."
+##    if debug:
+##        global name, time_reg, time_ext
     #img_file = os.path.join(IMAGE_FOLDER, img_file)
     #orig_frame = cv2.imread(img_file)
     # Extract the 2 portions with information.
@@ -227,20 +259,36 @@ def read_image(image, debug = False):
     # Turns out an enlargment significantly helps the readability of the frames
     
     # Enlarge the frames and to the extraction.
-    name    = read_name(Image.fromarray(enlarge(name_frame, REG_NAME_ENLARGE)))
-    time_reg= read_time(Image.fromarray(enlarge(time_frame, REG_TIME_ENLARGE)))
-    time_ext= read_time(Image.fromarray(enlarge(extract_image(time_frame),EXT_TIME_ENLARGE)))
+    name_image = Image.fromarray(enlarge(name_frame, REG_NAME_ENLARGE))
+    time_image = Image.fromarray(enlarge(time_frame, REG_TIME_ENLARGE))
+    time_ext_image = Image.fromarray(enlarge(extract_image(time_frame),EXT_TIME_ENLARGE))
 
+    # Get the reader from the pool to read.
+    read_name = NAME_POOL.get()
+    name    = read_name(name_image)
+    try:
+        NAME_POOL.put_nowait(read_name)
+    except queue.Full:
+        logger.error("Could not put name reader back in pool.")
+
+    # Smart read name.
     name = smart_read_name(name)
-    time = smart_read_time(time_reg, time_ext) if name != "" else ""
+
+    if name == "":
+        # We are done, negative match.
+        time = ""
+    else:
+        # Otherwise, analyize time.
+        read_time = TIME_POOL.get()
+        time_reg= read_time(time_image)
+        time_ext= read_time(time_ext_image)
+        try:
+            TIME_POOL.put_nowait(read_time)
+        except queue.Full:
+            logger.error("Could not put time reader back in pool.")
+
+        time = smart_read_time(time_reg, time_ext)
 
     logging.info("Image Results Name: %s Time: %s" % (name, time))
     
     return name, time
-
-# Now threading.
-# For threading, I need to make a pool of workers to process frames and pass
-# them back to the correct functions.
-
-NAME_POOL
-TIME_POOL =

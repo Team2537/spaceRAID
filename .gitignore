@@ -2,10 +2,6 @@
 # I can make this avalible to you but it is 2GB of pictures and video that will never change so lets not bug git with it.
 Examples/
 
-# For now, ignore some finals that aren't used.
-__init__.py
-find_matches.py
-
 # Python related ignore stuff.
 # Byte-compiled / optimized / DLL files
 __pycache__/

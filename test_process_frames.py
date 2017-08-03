@@ -25,9 +25,15 @@ __version__ = "0.5"
 __all__ = ["VERBOSE", "TRANSCRIPT_FILE", "main"]
 
 VERBOSE = 4 # EDIT HOW MUCH IS PRINTED
-IMAGE_FORM      = "image%d.png"                     or "image%d.jpg"
-IMAGE_FOLDER    = "./Examples/All"                  or "./Examples/Every5Sec"
-TRANSCRIPT_FILE = "./Examples/All/textInImages.txt" or "./Examples/Every5Sec/textInImages.txt"
+### All images.
+##IMAGE_FORM      = "image%d.png"
+##IMAGE_FOLDER    = "./Examples/All"
+##TRANSCRIPT_FILE = "./Examples/All/textInImages.txt"
+
+# Every 5 seconds images.
+IMAGE_FORM      = "image%d.jpg"
+IMAGE_FOLDER    = "./Examples/Every5Sec"
+TRANSCRIPT_FILE = "./Examples/Every5Sec/textInImages.txt"
 
 # Make absolute paths.
 try:
@@ -144,9 +150,6 @@ class Transcript():
 
 def main():
     """Test the process frames."""
-    
-
-    
     global read_name_results, read_time_results
     # Just to get everything on one line, here are some convinent functions.
     read_name_results = []
@@ -165,6 +168,9 @@ def main():
     else:
         print("ALLOW_FAILURE: Disabled")
     print("VERBOSE: %d" % VERBOSE)
+
+    # Initalize the process_frames.
+    process_frames.init()
 
     failed_frames = 0
     exc_start_time = time.time()
