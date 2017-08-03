@@ -228,7 +228,7 @@ def init():
             NAME_POOL.put_nowait(read_name)
     except queue.Full:
         # Somehow, NAME_POOL_SIZE must have changed?
-        logger.error("NAME_POOL_SIZE changed during pool initalization.")
+        logging.error("NAME_POOL_SIZE changed during pool initalization.")
 
     try:
         for i in range(TIME_POOL_SIZE):
@@ -237,7 +237,7 @@ def init():
             TIME_POOL.put_nowait(read_time)
     except queue.Full:
         # Somehow, TIME_POOL_SZE must have changed?
-        logger.error("TIME_POOL_SIZE changed during pool initalization.")
+        logging.error("TIME_POOL_SIZE changed during pool initalization.")
 
 def read_image(image):#, debug = False):
     """Take image files and try to read the words from them.
@@ -269,7 +269,7 @@ def read_image(image):#, debug = False):
     try:
         NAME_POOL.put_nowait(read_name)
     except queue.Full:
-        logger.error("Could not put name reader back in pool.")
+        logging.error("Could not put name reader back in pool.")
 
     # Smart read name.
     name = smart_read_name(name)
@@ -285,7 +285,7 @@ def read_image(image):#, debug = False):
         try:
             TIME_POOL.put_nowait(read_time)
         except queue.Full:
-            logger.error("Could not put time reader back in pool.")
+            logging.error("Could not put time reader back in pool.")
 
         time = smart_read_time(time_reg, time_ext)
 

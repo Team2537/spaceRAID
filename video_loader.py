@@ -86,12 +86,14 @@ if cv2:
         #Width of the frames in the video stream.
         def get_frame_width(self):
             """Get the width of the frames."""
-            return self.cap.get(cv2.CAP_PROP_FRAME_WIDTH)
+            # Change to an integer as it should be.
+            return int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
 
         #Height of the frames in the video stream.
         def get_frame_height(self):
             """Get the height of the frames."""
-            return self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
+            # Change to an integer as it should be.
+            return int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
         #Frame rate. Frames Per Second
         def get_fps(self):
@@ -101,7 +103,8 @@ if cv2:
         #Number of frames in the video file.
         def get_frame_count(self):
             """Get the number of frames in the video file."""
-            return self.cap.get(cv2.CAP_PROP_FRAME_COUNT)
+            # passed as a float but has no buisness being a float.
+            return int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
         # Codes that I did not include.
 
