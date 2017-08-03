@@ -274,7 +274,7 @@ def read_image(image):#, debug = False):
     # Smart read name.
     name = smart_read_name(name)
 
-    if name == "":
+    if not name:
         # We are done, negative match.
         time = ""
     else:
