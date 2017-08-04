@@ -43,9 +43,10 @@ if cv2:
     class Video():
 
         __all__ = ['close', 'closed',   'get_fps',          'get_frame',
-                   'get_frame_count',   'get_frame_height', 'get_frame_width',
+                   'get_frame_index',   'get_frame_height', 'get_frame_width',
                    'get_progress',      'get_timestamp',    'name', 'path',
-                   'set_frame_count',   'set_progress',     'set_timestamp']
+                   'set_frame_index',   'set_progress',     'set_timestamp'
+                   'get_frame_count']
         def __init__(self, source):
             self.name = os.path.basename(source)
             self.path = source

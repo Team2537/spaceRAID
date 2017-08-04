@@ -35,6 +35,12 @@ IMAGE_FORM      = "image%d.jpg"
 IMAGE_FOLDER    = "./Examples/Every5Sec"
 TRANSCRIPT_FILE = "./Examples/Every5Sec/textInImages.txt"
 
+# input machanism.
+try:
+    raw_input
+except NameError:
+    raw_input = input
+
 # Make absolute paths.
 try:
     __file__
@@ -148,8 +154,9 @@ class Transcript():
     def __exit__(self, exc_type, exc_value, traceback):
         self.close()
 
-def main():
+def test():
     """Test the process frames."""
+    # First, some options to the test to run.
     global read_name_results, read_time_results
     # Just to get everything on one line, here are some convinent functions.
     read_name_results = []
@@ -256,6 +263,31 @@ def main():
         else:
             print(" Average Time:\tN/A seconds")
         print("   Total Time:\t%.3f seconds" % exc_time)
+
+def main():
+    print("Hello! What do you want to test?")
+    print("1) process_frames.read_frame()")
+    print("2) find_matches.read_moment()")
+    test = raw_input("Which test do you want to run? (1 or 2): ")
+    while test != "1" or test != "2":
+        test = raw_input("Sorry, the answer must be either 1 or 2: ")
+
+    print("What test set do you want to use?: ")
+    print("1) Set of 7995 png images.")
+    print("2) Set of 56 jpg images.")
+    print('3) Video "Qualification Match 5.mov" with 7995 frames.')
+    print('4) Video "Saturday 3-11-17_ND.mp4" with 1,194,263 frames.')
+    test_set = raw_input("Which test set do you want to use? (1 - 4)?: ")
+    while test_set not in ("1", "2", "3", "4"):
+        test_set = raw_input("Sorry, the answer must be 1, 2, 3, or 4: ")
+
+    # Alright, we have the process, now actually do it.
+    if test == "1": # process_frames.read_frame()
+        pass
+    else: # find_matches.read_moment()
+        pass
+    
+        
 
 if __name__ == '__main__':
     main()
