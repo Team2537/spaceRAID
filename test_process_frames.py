@@ -140,7 +140,11 @@ class Transcript():
 
     def __iter__(self):
         """Move through the next frame."""
-        return self # Use self.__next__
+        while True:
+            r = self.next()
+            if r is None:
+                raise StopIteration()
+            yield r
 
     @property
     def closed(self):
