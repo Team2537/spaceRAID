@@ -52,6 +52,11 @@ if cv2:
             self.path = source
             self.cap = cv2.VideoCapture(os.path.abspath(source))
 
+        def __iter__(self, source):
+            """Go through the frames."""
+            while True:
+                pass
+
         #Current position of the video file in
         # milliseconds or video capture timestamp.
         def get_timestamp(self):

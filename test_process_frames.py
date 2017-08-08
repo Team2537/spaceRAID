@@ -25,15 +25,6 @@ __version__ = "0.5"
 __all__ = ["VERBOSE", "TRANSCRIPT_FILE", "main"]
 
 VERBOSE = 4 # EDIT HOW MUCH IS PRINTED
-### All images.
-##IMAGE_FORM      = "image%d.png"
-##IMAGE_FOLDER    = "./Examples/All"
-##TRANSCRIPT_FILE = "./Examples/All/textInImages.txt"
-
-# Every 5 seconds images.
-IMAGE_FORM      = "image%d.jpg"
-IMAGE_FOLDER    = "./Examples/Every5Sec"
-TRANSCRIPT_FILE = "./Examples/Every5Sec/textInImages.txt"
 
 # input machanism.
 try:
@@ -50,13 +41,9 @@ except NameError:
     __file__ = os.path.abspath(inspect.getframeinfo(inspect.currentframe()).filename)
     del inspect # Don't pollute namespace.
 
-basename = os.path.dirname(__file__)
-IMAGE_FOLDER    = os.path.abspath(os.path.join(basename, IMAGE_FOLDER))
-TRANSCRIPT_FILE = os.path.abspath(os.path.join(basename, TRANSCRIPT_FILE))
-
 def average(numbers):
     """Find the average of all of the numbers."""
-    return sum(numbers) * 1. / len(numbers) # Average
+    return float(sum(numbers)) / len(numbers) # Average
 
 def similar(a, b):
     """Evaluate the similarity of two strings."""
@@ -65,11 +52,15 @@ def similar(a, b):
 
 class Transcript():
     """Read the transcript of what happened in the video."""
-    def __init__(self, file):
+    def __init__(self, image_dir, image_format, transcript_file):
         """Create a transcript."""
-        self.source = open(file)
+        # make the file and directory absolute.
+        self.source = open(os.path.abspath(transcript_file))
         self.last_frame = None
         self.next_frame = None
+
+        self.image_dir    = os.path.abspath(os.path.join(__file__, image_dir))
+        self.image_format = image_format
 
     def _parse(self, line):
         """Parse the line into a readable form."""
@@ -101,51 +92,63 @@ class Transcript():
         # Finished processing, now do something with it.
         return frame_number, name_result, time_result
 
-    def __iter__(self):
-        while not self.source.closed:
-            # If we have a next_frame we are working toward, do that.
-            if self.next_frame is not None and self.last_frame is not None:
-                if self.last_frame[0] +1 < self.next_frame[0]:
-                    # Next frame is NOT immediately after next frame.
-                    # Return the last frame again.
-                    self.last_frame[0] += 1
-                    yield self.last_frame
-                elif self.last_frame[0] + 1 >= self.next_frame[0]:
-                    # We have gone through all of the required frames.
-                    # Finish this iteration.
-                    self.last_frame = self.next_frame
+    def next(self):
+        """Return the next frame."""
+        if self.closed:
+            raise StopIteration()
+        # If we have a next_frame we are working toward, do that.
+        if self.next_frame is not None and self.last_frame is not None:
+            if self.last_frame[0] +1 < self.next_frame[0]:
+                # Next frame is NOT immediately after next frame.
+                # Return the last frame again.
+                self.last_frame[0] += 1
+                return self.last_frame
+            elif self.last_frame[0] + 1 >= self.next_frame[0]:
+                # We have gone through all of the required frames.
+                # Finish this iteration.
+                self.last_frame = self.next_frame
+                self.next_frame = None
+                return self.last_frame
+
+        # Otherwise, load another frame.
+        else:
+            for line in self.source:
+                # Send the new line to be parsed.
+                line = self._parse(line)
+                if line is None:
+                    continue
+                frame_number, name_result, time_result = line
+
+                if self.last_frame is None or \
+                   frame_number == self.last_frame[0] + 1:
+                    # This is the next frame, go ahead and return it.
+                    self.last_frame = [frame_number, name_result, time_result]
+                    return self.last_frame
                     self.next_frame = None
-                    yield self.last_frame
-
-            # Otherwise, load another frame.
-            else:
-                for line in self.source:
-                    # Send the new line to be parsed.
-                    line = self._parse(line)
-                    if line is None:
-                        continue
-                    frame_number, name_result, time_result = line
-
-                    if self.last_frame is None or \
-                       frame_number == self.last_frame[0] + 1:
-                        # This is the next frame, go ahead and return it.
-                        self.last_frame = [frame_number, name_result, time_result]
-                        yield self.last_frame
-                        self.next_frame = None
-                        break
-                    else:
-                        # This frame is actually for a frame that has not happened yet.
-                        # The current frame is actually the same as the last frame.
-                        #self.last_frame = self.next_frame
-                        self.next_frame = [frame_number, name_result, time_result]
-                        break
-                else:
-                    # Finished file. We are done here.
-                    self.close()
                     break
+                else:
+                    # This frame is actually for a frame that has not happened yet.
+                    # The current frame is actually the same as the last frame.
+                    #self.last_frame = self.next_frame
+                    self.next_frame = [frame_number, name_result, time_result]
+                    break
+            else:
+                # Finished file. We are done here.
+                self.close()
+
+    __next__ = next
+
+    def __iter__(self):
+        """Move through the next frame."""
+        return self # Use self.__next__
+
+    @property
+    def closed(self):
+        """Return if the file is closed."""
+        return self.source.closed
 
     def close(self):
-        if not self.source.closed:
+        if not self.closed:
             self.source.close()
                 
     def __enter__(self):
@@ -154,7 +157,14 @@ class Transcript():
     def __exit__(self, exc_type, exc_value, traceback):
         self.close()
 
-def test():
+def test(src):
+##    IMAGE_FOLDER = "./Examples/All"
+##    IMAGE_FORMAT = "image%d.png",
+##    TRANSCRIPT_FILE = "./Examples/All/textInImages.txt"
+##
+##    basename = os.path.dirname(__file__)
+##    IMAGE_FOLDER    = os.path.abspath(os.path.join(basename, IMAGE_FOLDER))
+##    TRANSCRIPT_FILE = os.path.abspath(os.path.join(basename, TRANSCRIPT_FILE))
     """Test the process frames."""
     # First, some options to the test to run.
     global read_name_results, read_time_results
@@ -183,8 +193,8 @@ def test():
     exc_start_time = time.time()
 
     try:
-        for img_num, real_name, real_time in Transcript(TRANSCRIPT_FILE):
-            img_file = os.path.join(IMAGE_FOLDER, IMAGE_FORM % img_num)
+        for img_num, real_name, real_time in src:
+            img_file = os.path.join(src.image_dir, src.image_format % img_num)
             img_file = os.path.abspath(img_file)
             
             frame_time_start = time.time() # Timing
@@ -241,7 +251,11 @@ def test():
         exc_time = exc_stop_time - exc_start_time
         print("")
         # Now that we are done, print summary information.
-        print("%s Frames\tPartial Matches\tPerfect Matches" % img_num)
+        try:
+            print("%s Frames\tPartial Matches\tPerfect Matches" % img_num)
+        except NameError:
+            # Failed before the loop.
+            print("0 Frames\tPartial Matches\tPerfect Matches")
         if read_name_results:
             name_partial_percent = average(zip(*read_name_results)[1]) * 100
             name_perfect_percent = average(zip(*read_name_results)[2]) * 100
@@ -268,26 +282,67 @@ def main():
     print("Hello! What do you want to test?")
     print("1) process_frames.read_frame()")
     print("2) find_matches.read_moment()")
-    test = raw_input("Which test do you want to run? (1 or 2): ")
-    while test != "1" or test != "2":
-        test = raw_input("Sorry, the answer must be either 1 or 2: ")
+    test_num = raw_input("Which test do you want to run? (1 or 2): ").strip()
+    while test_num != "1" and test_num != "2":
+        test_num = raw_input("Sorry, the answer must be either 1 or 2: ").strip()
 
-    print("What test set do you want to use?: ")
-    print("1) Set of 7995 png images.")
-    print("2) Set of 56 jpg images.")
-    print('3) Video "Qualification Match 5.mov" with 7995 frames.')
-    print('4) Video "Saturday 3-11-17_ND.mp4" with 1,194,263 frames.')
-    test_set = raw_input("Which test set do you want to use? (1 - 4)?: ")
-    while test_set not in ("1", "2", "3", "4"):
-        test_set = raw_input("Sorry, the answer must be 1, 2, 3, or 4: ")
+    if test_num == "1":
+        # process_frames.read_frame() test.
+        # images or video.
+        print("What test set do you want to use?: ")
+        print('1) Video "Qualification Match 5.mov" with 7995 frames.')
+        print('2) Video "Saturday 3-11-17_ND.mp4" with 1,194,263 frames.')
+        print("3) Set of 7995 png images.")
+        print("4) Set of 56 jpg images.")
+        test_set = raw_input("Which test set do you want to use? (1 - 4)?: ").strip()
+        while test_set not in ("1", "2", "3", "4"):
+            test_set = raw_input("Sorry, the answer must be 1, 2, 3, or 4: ").strip()
 
-    # Alright, we have the process, now actually do it.
-    if test == "1": # process_frames.read_frame()
-        pass
-    else: # find_matches.read_moment()
-        pass
-    
-        
+    else:
+        # find_matches.read_moment()
+        # video only.
+        print("What test set do you want to use?: ")
+        print('1) Video "Qualification Match 5.mov" with 7995 frames.')
+        print('2) Video "Saturday 3-11-17_ND.mp4" with 1,194,263 frames.')
+        #print("3) Set of 7995 png images.") Not valid.
+        #print("4) Set of 56 jpg images.") Not valid.
+        test_set = raw_input  ("Which test set do you want to use? (1 or 2)?: ").strip()
+        while (test_set != "1") and (test_set != "2"):
+            test_set = raw_input("Sorry, the answer must be 1 or 2: ").strip()
+
+    basename = os.path.dirname(__file__)
+
+    if test_set == "1":
+        # Qualification Video.
+        src = Video(os.path.join(basename, "Qualification Match 5.mov"))
+
+    elif test_set == "2":
+        # Saturday huge video.
+        src = Video(os.path.join(basename, "Saturday 3-11-17_ND.mp4"))
+
+    elif test_set == "3":
+        # "All" Set.
+        src = Transcript(
+                os.path.join(basename, "./Examples/All"),
+                "image%d.png",
+                os.path.join(basename, "./Examples/All/textInImages.txt")
+                )
+
+    elif test_set == "4":
+        # "Every5" Set.
+        src = Transcript(
+                os.path.join(basename, "./Examples/Every5Sec"),
+                "image%d.jpg",
+                os.path.join("./Examples/Every5Sec/textInImages.txt")
+                )
+
+    else:
+        # Error? How did we get here.
+        raise RuntimeError("Could not process the test set %r. Bad number." % test_set)
+
+    # So, now we have src.
+    # Run it!
+    test(src)
 
 if __name__ == '__main__':
     main()
