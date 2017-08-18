@@ -26,11 +26,17 @@ __all__ = ["VERBOSE", "TRANSCRIPT_FILE", "main"]
 
 VERBOSE = 4 # EDIT HOW MUCH IS PRINTED
 
-# input machanism.
+# input for python 2.X and 3.X
 try:
     raw_input
 except NameError:
     raw_input = input
+
+# For more consice repr
+from repr import repr
+
+LOGGING_LEVEL = None
+VIDEO_WINDOW = None
 
 # Make absolute paths.
 try:
@@ -50,7 +56,7 @@ def similar(a, b):
     # This is built into python. Python is Great!!!
     return difflib.SequenceMatcher(None, a, b).ratio()
 
-class Transcript():
+class Image_Transcript():
     """Read the transcript of what happened in the video."""
     def __init__(self, image_dir, image_format, transcript_file):
         """Create a transcript."""
@@ -89,52 +95,64 @@ class Transcript():
                 "Could not read the frame_number %r from transcript %r." \
                 % (content[0], self.source.name))
             frame_number = self.last_frame[0] + 1 if self.last_frame else 1
+
+        # Now, take the frame_number and actually load the frame.
+        file_path = os.path.join(self.image_dir, self.image_format % frame_number)
+        frame = video_loader.load_image(file_path)
         # Finished processing, now do something with it.
-        return frame_number, name_result, time_result
+        return frame_number, frame, name_result, time_result
 
     def next(self):
         """Return the next frame."""
-        if self.closed:
-            raise StopIteration()
-        # If we have a next_frame we are working toward, do that.
-        if self.next_frame is not None and self.last_frame is not None:
-            if self.last_frame[0] +1 < self.next_frame[0]:
-                # Next frame is NOT immediately after next frame.
-                # Return the last frame again.
-                self.last_frame[0] += 1
-                return self.last_frame
-            elif self.last_frame[0] + 1 >= self.next_frame[0]:
-                # We have gone through all of the required frames.
-                # Finish this iteration.
-                self.last_frame = self.next_frame
-                self.next_frame = None
-                return self.last_frame
-
-        # Otherwise, load another frame.
-        else:
-            for line in self.source:
-                # Send the new line to be parsed.
-                line = self._parse(line)
-                if line is None:
-                    continue
-                frame_number, name_result, time_result = line
-
-                if self.last_frame is None or \
-                   frame_number == self.last_frame[0] + 1:
-                    # This is the next frame, go ahead and return it.
-                    self.last_frame = [frame_number, name_result, time_result]
-                    return self.last_frame
+        rerun = True
+        while rerun: # Recursion is needed at least once, maybe more.
+            # Stop rerun
+            rerun = False
+            
+            if self.closed:
+                raise StopIteration()
+            # If we have a next_frame we are working toward, do that.
+            if self.next_frame is not None and self.last_frame is not None:
+                if self.last_frame[0] + 1 < self.next_frame[0]:
+                    # Next frame is NOT immediately after next frame.
+                    # Return the last frame again.
+                    self.last_frame[0] += 1
+                    return self.last_frame[1:] # Don't return frame_number
+                elif self.last_frame[0] + 1 >= self.next_frame[0]:
+                    # We have gone through all of the required frames.
+                    # Finish this iteration.
+                    self.last_frame = self.next_frame
                     self.next_frame = None
-                    break
-                else:
-                    # This frame is actually for a frame that has not happened yet.
-                    # The current frame is actually the same as the last frame.
-                    #self.last_frame = self.next_frame
-                    self.next_frame = [frame_number, name_result, time_result]
-                    break
+                    return self.last_frame[1:] # Don't return frame_number
+
+            # Otherwise, load another frame.
             else:
-                # Finished file. We are done here.
-                self.close()
+                for line in self.source:
+                    # Send the new line to be parsed.
+                    line = self._parse(line)
+                    if line is None:
+                        continue
+                    frame_number, frame, name_result, time_result = line
+
+                    if self.last_frame is None or \
+                       frame_number == self.last_frame[0] + 1:
+                        # This is the next frame, go ahead and return it.
+                        self.last_frame = [frame_number, frame, name_result, time_result]
+
+                        self.next_frame = None
+                        return self.last_frame[1:] # Don't return frame_number.
+                    else:
+                        # This frame is actually for a frame that has not happened yet.
+                        # The current frame is actually the same as the last frame.
+                        #self.last_frame = self.next_frame
+                        self.next_frame = [frame_number, frame, name_result, time_result]
+
+                        # Rerun to return first frame.
+                        rerun = True
+                        break
+                else:
+                    # Finished file. We are done here.
+                    self.close()
 
     __next__ = next
 
@@ -143,8 +161,12 @@ class Transcript():
         while True:
             r = self.next()
             if r is None:
+                logging.debug("Image Transcript Didn't read anything.")
                 raise StopIteration()
-            yield r
+
+            else:
+                logging.debug("Image Transcript Read %s." % repr(r))
+                yield r
 
     @property
     def closed(self):
@@ -161,14 +183,7 @@ class Transcript():
     def __exit__(self, exc_type, exc_value, traceback):
         self.close()
 
-def test(src):
-##    IMAGE_FOLDER = "./Examples/All"
-##    IMAGE_FORMAT = "image%d.png",
-##    TRANSCRIPT_FILE = "./Examples/All/textInImages.txt"
-##
-##    basename = os.path.dirname(__file__)
-##    IMAGE_FOLDER    = os.path.abspath(os.path.join(basename, IMAGE_FOLDER))
-##    TRANSCRIPT_FILE = os.path.abspath(os.path.join(basename, TRANSCRIPT_FILE))
+def test(src, VIDEO_WINDOW = VIDEO_WINDOW, LOGGING_LEVEL = LOGGING_LEVEL):
     """Test the process frames."""
     # First, some options to the test to run.
     global read_name_results, read_time_results
@@ -189,22 +204,33 @@ def test(src):
     else:
         print("ALLOW_FAILURE: Disabled")
     print("VERBOSE: %d" % VERBOSE)
+    print("VIDEO_WINDOW: %r" % VIDEO_WINDOW)
+    print("LOGGING_LEVEL: %r" % logging.getLevelName(LOGGING_LEVEL))
 
     # Initalize the process_frames.
+    print("Initalizing process_frames.")
     process_frames.init()
+
+    # Give pooling information.
+    print("Using %d name generators." % process_frames.NAME_POOL.qsize())
+    print("Using %d time generators." % process_frames.TIME_POOL.qsize())
 
     failed_frames = 0
     exc_start_time = time.time()
 
     try:
-        for img_num, real_name, real_time in src:
-            img_file = os.path.join(src.image_dir, src.image_format % img_num)
-            img_file = os.path.abspath(img_file)
+        for img_num, (frame, real_name, real_time) in enumerate(src):
             
             frame_time_start = time.time() # Timing
 
-            # Actually call the function.
-            frame = video_loader.load_image(img_file)
+            # Video Window
+            if VIDEO_WINDOW:
+                video_loader.cv2.imshow("Video", frame)
+
+                if video_loader.cv2.waitKey(1) & 0xFF == ord('q'):
+                    pass
+
+            # Back to analysis
             if frame is None:
                 logging.error("Frame %r was not present." % img_file)
                 continue
@@ -255,11 +281,15 @@ def test(src):
         exc_time = exc_stop_time - exc_start_time
         print("")
         # Now that we are done, print summary information.
+
+        # Make sure img_num exists.
         try:
-            print("%s Frames\tPartial Matches\tPerfect Matches" % img_num)
+            img_num
         except NameError:
-            # Failed before the loop.
-            print("0 Frames\tPartial Matches\tPerfect Matches")
+            img_num = 0
+        
+        print("%s Frames\tPartial Matches\tPerfect Matches" % img_num)
+        
         if read_name_results:
             name_partial_percent = average(zip(*read_name_results)[1]) * 100
             name_perfect_percent = average(zip(*read_name_results)[2]) * 100
@@ -282,13 +312,47 @@ def test(src):
             print(" Average Time:\tN/A seconds")
         print("   Total Time:\t%.3f seconds" % exc_time)
 
-def main():
+def main(args = None, VIDEO_WINDOW=VIDEO_WINDOW,LOGGING_LEVEL=LOGGING_LEVEL):
+    # Get test Information
     print("Hello! What do you want to test?")
     print("1) process_frames.read_frame()")
     print("2) find_matches.read_moment()")
     test_num = raw_input("Which test do you want to run? (1 or 2): ").strip()
     while test_num != "1" and test_num != "2":
         test_num = raw_input("Sorry, the answer must be either 1 or 2: ").strip()
+
+    # Get VIDEO_WINDOW if needed.
+    if VIDEO_WINDOW is None:
+        VIDEO_WINDOW = raw_input(
+            "Do you want to display the video feed?: "
+            ).strip()[0].upper()
+        while VIDEO_WINDOW != "Y" and VIDEO_WINDOW != "N":
+            VIDEO_WINDOW = raw_input("Sorry, the answer must be Y(es) or N(o): ")
+
+        VIDEO_WINDOW = VIDEO_WINDOW != "N"
+
+    # Get LOGGING_LEVEL if needed.
+    if LOGGING_LEVEL is None:
+        print("What amount of debug information do you want to see?")
+        print("1) DEBUG and more severe (Most Output).")
+        print("2) INFO and more severe.")
+        print("3) WARNING and more severe.")
+        print("4) ERROR and more severe.")
+        print("5) CRITICAL and more severe.")
+        print("6) FATAL (Least Output).")
+        LOGGING_LEVEL = raw_input("What debug level do you want?: ")
+        while LOGGING_LEVEL not in ("1", "2", "3", "4", "5", "6"):
+            LOGGING_LEVEL = raw_input("Sorry, answer must be 1, 2, 3, 4, 5, or 6.: ")
+
+        if   LOGGING_LEVEL == "1": LOGGING_LEVEL = logging.DEBUG
+        elif LOGGING_LEVEL == "2": LOGGING_LEVEL = logging.INFO
+        elif LOGGING_LEVEL == "3": LOGGING_LEVEL = logging.WARNING
+        elif LOGGING_LEVEL == "4": LOGGING_LEVEL = logging.ERROR
+        elif LOGGING_LEVEL == "5": LOGGING_LEVEL = logging.CRITICAL
+        elif LOGGING_LEVEL == "6": LOGGING_LEVEL = logging.FATAL
+
+    # Allow for more logging information.
+    logging.getLogger().setLevel(LOGGING_LEVEL)
 
     if test_num == "1":
         # process_frames.read_frame() test.
@@ -316,17 +380,17 @@ def main():
 
     basename = os.path.dirname(__file__)
 
-    if test_set == "1":
+    if   test_set == "1":
         # Qualification Video.
-        src = Video(os.path.join(basename, "Qualification Match 5.mov"))
+        src = video_loader.Video(os.path.join(basename, "Qualification Match 5.mov"))
 
     elif test_set == "2":
         # Saturday huge video.
-        src = Video(os.path.join(basename, "Saturday 3-11-17_ND.mp4"))
+        src = video_loader.Video(os.path.join(basename, "Saturday 3-11-17_ND.mp4"))
 
     elif test_set == "3":
         # "All" Set.
-        src = Transcript(
+        src = Image_Transcript(
                 os.path.join(basename, "./Examples/All"),
                 "image%d.png",
                 os.path.join(basename, "./Examples/All/textInImages.txt")
@@ -334,7 +398,7 @@ def main():
 
     elif test_set == "4":
         # "Every5" Set.
-        src = Transcript(
+        src = Image_Transcript(
                 os.path.join(basename, "./Examples/Every5Sec"),
                 "image%d.jpg",
                 os.path.join("./Examples/Every5Sec/textInImages.txt")
@@ -346,7 +410,8 @@ def main():
 
     # So, now we have src.
     # Run it!
-    test(src)
+    test(src, VIDEO_WINDOW, LOGGING_LEVEL)
 
 if __name__ == '__main__':
-    main()
+    #main()
+    pass

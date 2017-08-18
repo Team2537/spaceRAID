@@ -11,7 +11,7 @@ __version__ = "0.5"
 # TODO
 # Add the meanings of various return codes.
 # Implement complete ffmpeg support.
-__all__ = ["Video"]
+__all__ = ["Video", "load_image", "save_image"]
 
 import os
 # Get whatever library is avalible.
@@ -41,6 +41,7 @@ if cv2:
         return cv2.imwrite(os.path.abspath(source), image)
     
     class Video():
+        """A wrapper class for cv2 and ffmpeg of video processing."""
 
         __all__ = ['close', 'closed',   'get_fps',          'get_frame',
                    'get_frame_index',   'get_frame_height', 'get_frame_width',
@@ -52,10 +53,16 @@ if cv2:
             self.path = source
             self.cap = cv2.VideoCapture(os.path.abspath(source))
 
-        def __iter__(self, source):
+        def __iter__(self):
             """Go through the frames."""
-            while True:
-                pass
+            while not self.closed():
+                # Open
+                frame = self.read()
+                if frame is None:
+                    break
+                yield frame
+            # Close cause we are done.
+            self.close()
 
         #Current position of the video file in
         # milliseconds or video capture timestamp.

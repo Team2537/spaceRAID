@@ -221,29 +221,67 @@ def init():
     """Add the generaters to NAME_POOL and TIME_POOL for processing.
        This can take a little bit of time.
     """
+    # Set NAME_POOL to have NAME_POOL_SIZE generators. Because of multithreading,
+    # this can fail in many strange ways.
+    # Then set TIME_POOL to have TIME_POOL_SIZE generators.
     try:
-        for i in range(NAME_POOL_SIZE):
+        for i in range(NAME_POOL_SIZE - NAME_POOL.qsize()):
             read_name = name_reader().send # Make generater.
             read_name(None) # Initalize with None.
             NAME_POOL.put_nowait(read_name)
+
+        # Make sure that we are not over NAME_POOL_SIZE
+        while NAME_POOL_SIZE < NAME_POOL.qsize():
+            # To large?
+            # Pull
+            NAME_POOL.get_nowait()
+            
     except queue.Full:
         # Somehow, NAME_POOL_SIZE must have changed?
         logging.error("NAME_POOL_SIZE changed during pool initalization.")
 
+    except queue.Empty:
+        # Hummmm.
+        # Two Possibilities
+        # 1 NAME_POOL_SIZE is somehow less than zero.
+        # Or NAME_POOL.qsize was wrong (changed do to mulithreading.)
+        if NAME_POOL_SIZE <= 0:
+            logging.fatal("NAME_POOL_SIZE is %d. Which is not greater than zero." % NAME_POOL_SIZE)
+        else:
+            logging.error("NAME_POOL.qsize() changed during initalization.")
+
     try:
-        for i in range(TIME_POOL_SIZE):
+        for i in range(TIME_POOL_SIZE - TIME_POOL.qsize()):
             read_time = time_reader().send # Make generater.
             read_time(None) # Initalize with None.
             TIME_POOL.put_nowait(read_time)
+
+        # Make sure that we are not over TIME_POOL_SIZE
+        while TIME_POOL_SIZE < TIME_POOL.qsize():
+            # To large?
+            # Pull
+            TIME_POOL.get_nowait()
+            
     except queue.Full:
         # Somehow, TIME_POOL_SZE must have changed?
         logging.error("TIME_POOL_SIZE changed during pool initalization.")
+
+    except queue.Empty:
+        # Hummmm.
+        # Two Possibilities
+        # 1 TIME_POOL_SIZE is somehow less than zero.
+        # Or TIME_POOL.qsize was wrong (changed do to mulithreading.)
+        if TIME_POOL_SIZE <= 0:
+            logging.fatal("TIME_POOL_SIZE is %d. Which is not greater than zero." % TIME_POOL_SIZE)
+        else:
+            logging.error("TIME_POOL.qsize() changed during initalization.")
 
 def read_image(image):#, debug = False):
     """Take image files and try to read the words from them.
        Takes a numpy image.
     """
-    assert not NAME_POOL.empty() and not TIME_POOL.empty(), "process_frames have not been initalize."
+    assert not NAME_POOL.empty(), "process_frames.NAME_POOL not initalized."
+    assert not TIME_POOL.empty(), "process_frames.TIME_POOL not initalized."
 ##    if debug:
 ##        global name, time_reg, time_ext
     #img_file = os.path.join(IMAGE_FOLDER, img_file)
@@ -257,12 +295,10 @@ def read_image(image):#, debug = False):
     del image # Its a full image in memory. Clear as fast as possible.
 
     # Turns out an enlargment significantly helps the readability of the frames
-    
+
+    # To get the NAME from the image.
     # Enlarge the frames and to the extraction.
     name_image = Image.fromarray(enlarge(name_frame, REG_NAME_ENLARGE))
-    time_image = Image.fromarray(enlarge(time_frame, REG_TIME_ENLARGE))
-    time_ext_image = Image.fromarray(enlarge(extract_image(time_frame),EXT_TIME_ENLARGE))
-
     # Get the reader from the pool to read.
     read_name = NAME_POOL.get()
     name    = read_name(name_image)
@@ -279,6 +315,10 @@ def read_image(image):#, debug = False):
         time = ""
     else:
         # Otherwise, analyize time.
+        # Enlarge the frames and to the extraction.
+        time_image = Image.fromarray(enlarge(time_frame, REG_TIME_ENLARGE))
+        time_ext_image = Image.fromarray(enlarge(extract_image(time_frame),EXT_TIME_ENLARGE))
+
         read_time = TIME_POOL.get()
         time_reg= read_time(time_image)
         time_ext= read_time(time_ext_image)
@@ -291,4 +331,4 @@ def read_image(image):#, debug = False):
 
     logging.info("Image Results Name: %s Time: %s" % (name, time))
     
-    return name, time
+    return str(name), str(time) # Remove unicode if present.
