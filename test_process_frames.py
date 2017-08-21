@@ -19,6 +19,10 @@ import logging
 import video_loader
 import process_frames
 
+# For the talking to screen
+import user
+import dummy_easygui as easygui
+
 __author__ = "Matthew Schweiss"
 __version__ = "0.5"
 
@@ -44,7 +48,8 @@ try:
 except NameError:
     print_("Finding file location.")
     import inspect
-    __file__ = os.path.abspath(inspect.getframeinfo(inspect.currentframe()).filename)
+    __file__ = os.path.abspath(
+        inspect.getframeinfo(inspect.currentframe()).filename)
     del inspect # Don't pollute namespace.
 
 def average(numbers):
@@ -108,7 +113,7 @@ class Image_Transcript():
         while rerun: # Recursion is needed at least once, maybe more.
             # Stop rerun
             rerun = False
-            
+
             if self.closed:
                 raise StopIteration()
             # If we have a next_frame we are working toward, do that.
@@ -176,7 +181,7 @@ class Image_Transcript():
     def close(self):
         if not self.closed:
             self.source.close()
-                
+
     def __enter__(self):
         pass
 
@@ -190,7 +195,7 @@ def test(src, VIDEO_WINDOW = VIDEO_WINDOW, LOGGING_LEVEL = LOGGING_LEVEL):
     # Just to get everything on one line, here are some convinent functions.
     read_name_results = []
     read_time_results = []
-    
+
     exc_time_results  = []
 
     if not VERBOSE:
@@ -220,7 +225,7 @@ def test(src, VIDEO_WINDOW = VIDEO_WINDOW, LOGGING_LEVEL = LOGGING_LEVEL):
 
     try:
         for img_num, (frame, real_name, real_time) in enumerate(src):
-            
+
             frame_time_start = time.time() # Timing
 
             # Video Window
@@ -287,9 +292,9 @@ def test(src, VIDEO_WINDOW = VIDEO_WINDOW, LOGGING_LEVEL = LOGGING_LEVEL):
             img_num
         except NameError:
             img_num = 0
-        
+
         print("%s Frames\tPartial Matches\tPerfect Matches" % img_num)
-        
+
         if read_name_results:
             name_partial_percent = average(zip(*read_name_results)[1]) * 100
             name_perfect_percent = average(zip(*read_name_results)[2]) * 100
@@ -325,11 +330,11 @@ def main(args = None, VIDEO_WINDOW=VIDEO_WINDOW,LOGGING_LEVEL=LOGGING_LEVEL):
     if VIDEO_WINDOW is None:
         VIDEO_WINDOW = raw_input(
             "Do you want to display the video feed?: "
-            ).strip()[0].upper()
-        while VIDEO_WINDOW != "Y" and VIDEO_WINDOW != "N":
-            VIDEO_WINDOW = raw_input("Sorry, the answer must be Y(es) or N(o): ")
+            ).strip().upper()
+        while VIDEO_WINDOW[0] != "Y" and VIDEO_WINDOW[0] != "N":
+            VIDEO_WINDOW = raw_input("Sorry, the answer must be Y(es) or N(o): ").upper()
 
-        VIDEO_WINDOW = VIDEO_WINDOW != "N"
+        VIDEO_WINDOW = VIDEO_WINDOW[0] != "N"
 
     # Get LOGGING_LEVEL if needed.
     if LOGGING_LEVEL is None:
@@ -413,5 +418,4 @@ def main(args = None, VIDEO_WINDOW=VIDEO_WINDOW,LOGGING_LEVEL=LOGGING_LEVEL):
     test(src, VIDEO_WINDOW, LOGGING_LEVEL)
 
 if __name__ == '__main__':
-    #main()
-    pass
+    main()
