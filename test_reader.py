@@ -77,11 +77,12 @@ class Image_Transcript():
     def __init__(self, image_dir, image_format, transcript_file):
         """Create a transcript."""
         # make the file and directory absolute.
-        self.source = open(os.path.abspath(transcript_file))
+        self.source = open(transcript_file)
         self.last_frame = None
         self.next_frame = None
 
-        self.image_dir    = os.path.abspath(os.path.join(__file__, image_dir))
+        self.image_dir    = os.path.normpath(image_dir)
+        print("Image Directory: %s" % image_dir)
         self.image_format = image_format
 
     def _parse(self, line):
@@ -153,7 +154,7 @@ class Image_Transcript():
                     if self.last_frame is None or \
                        frame_number == self.last_frame[0] + 1:
                         # This is the next frame, go ahead and return it.
-                        self.last_frame = [frame_number, frame, name_result, time_result]
+                        self.last_frame=(frame_number,frame,name_result,time_result)
 
                         self.next_frame = None
                         return self.last_frame[1:] # Don't return frame_number.
@@ -161,7 +162,7 @@ class Image_Transcript():
                         # This frame is actually for a frame that has not happened yet.
                         # The current frame is actually the same as the last frame.
                         #self.last_frame = self.next_frame
-                        self.next_frame = [frame_number, frame, name_result, time_result]
+                        self.next_frame=(frame_number,frame,name_result,time_result)
 
                         # Rerun to return first frame.
                         rerun = True
@@ -221,6 +222,7 @@ def test(src, VIDEO_WINDOW = VIDEO_WINDOW, LOGGING_LEVEL = LOGGING_LEVEL):
     print("VERBOSE: %d" % VERBOSE)
     print("VIDEO_WINDOW: %r" % VIDEO_WINDOW)
     print("LOGGING_LEVEL: %r" % logging.getLevelName(LOGGING_LEVEL))
+    print("Working File: %r" % __file__)
 
     # Initalize the process_frames.
     print("Initalizing process_frames.")
@@ -244,14 +246,11 @@ def test(src, VIDEO_WINDOW = VIDEO_WINDOW, LOGGING_LEVEL = LOGGING_LEVEL):
 
             # Video Window
             if VIDEO_WINDOW:
-                video_loader.cv2.imshow("Video", frame)
-
-                if video_loader.cv2.waitKey(1) & 0xFF == ord('q'):
-                    pass
+                video_loader.show_image(frame)
 
             # Back to analysis
             if frame is None:
-                logging.error("Frame %r was not present." % img_file)
+                logging.error("Frame failed to read.")
                 continue
             read_name, read_time = process_frames.read_image(frame)
 
@@ -429,7 +428,7 @@ def main(args = None, VIDEO_WINDOW=VIDEO_WINDOW,LOGGING_LEVEL=LOGGING_LEVEL):
         # Exit
         return
 
-    basename = os.path.dirname(__file__)
+    basename = os.path.dirname(os.path.abspath(__file__))
 
     if   test_set == 0:
         # Qualification Video.
@@ -454,7 +453,7 @@ def main(args = None, VIDEO_WINDOW=VIDEO_WINDOW,LOGGING_LEVEL=LOGGING_LEVEL):
         src = Image_Transcript(
                 os.path.join(basename, "./Examples/Every5Sec"),
                 "image%d.jpg",
-                os.path.join("./Examples/Every5Sec/textInImages.txt")
+                os.path.join(basename, "./Examples/Every5Sec/textInImages.txt")
                 )
 
     else:

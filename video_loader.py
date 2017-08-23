@@ -14,6 +14,8 @@ __version__ = "0.5"
 __all__ = ["Video", "load_image", "save_image"]
 
 import os
+import logging
+import warnings
 # Get whatever library is avalible.
 
 # Build first for ffmpeg. Then, if that fails. Build for cv2.
@@ -32,13 +34,35 @@ else:
         ffmpeg = None
     
 if cv2:
-    def load_image(source):
+    def load_image(path):
         """Load the image from file."""
-        return cv2.imread(os.path.abspath(source))
+        # First make sure the source exists.
+        if not os.path.exists(path):
+            raise ValueError("Image at %r does not exists." % path)
+        return cv2.imread(path)
 
     def save_image(image, destination):
         """Save the image to a file."""
         return cv2.imwrite(os.path.abspath(source), image)
+
+    def show_image(image, title = "Video"):
+        """Display an image on the screen if possible."""
+        try:
+            cv2.imshow(title, image)
+
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                pass
+        except cv2.error:
+            # Problem with running in the terminal.
+            # cv2.error: /tmp/opencv3-20170409-67121-nwgnzg/opencv-3.2.0/modules
+            # /highgui/src/window.cpp:304: error: (-215) size.width>0 && size.he
+            # ight>0 in function imshow
+
+            # Will not show up at all.
+            msg = "Error displaying images. cv2.error when running in terminal."
+            logging.error(msg)
+            warnings.warn(RuntimeWarning(msg), stacklevel = 2)
+            
     
     class Video():
         """A wrapper class for cv2 and ffmpeg of video processing."""
@@ -49,12 +73,18 @@ if cv2:
                    'set_frame_index',   'set_progress',     'set_timestamp'
                    'get_frame_count']
         def __init__(self, source):
-            self.path = os.path.normpath(os.path.abspath(source))
+            self.path = os.path.normpath(source)
             self.name = os.path.basename(self.path)
             self.cap = cv2.VideoCapture(self.path)
             # If the path is bunk and bogus, cap.isOpened()
             # will return False now.
             if not self.cap.isOpened():
+                # Bad file.
+                raise ValueError(
+                    "The path %r is not a readable video file." % source)
+
+            # Also, check the source.
+            if not os.path.exists(self.path):
                 # Bad file.
                 raise ValueError(
                     "The path %r is not a readable video file." % source)
