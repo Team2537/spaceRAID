@@ -49,15 +49,24 @@ if cv2:
                    'set_frame_index',   'set_progress',     'set_timestamp'
                    'get_frame_count']
         def __init__(self, source):
-            self.name = os.path.basename(source)
-            self.path = source
-            self.cap = cv2.VideoCapture(os.path.abspath(source))
+            self.path = os.path.normpath(os.path.abspath(source))
+            self.name = os.path.basename(self.path)
+            self.cap = cv2.VideoCapture(self.path)
+            # If the path is bunk and bogus, cap.isOpened()
+            # will return False now.
+            if not self.cap.isOpened():
+                # Bad file.
+                raise ValueError(
+                    "The path %r is not a readable video file." % source)
+
+        def __repr__(self):
+            return "Video(%r)" % self.path
 
         def __iter__(self):
             """Go through the frames."""
             while not self.closed():
                 # Open
-                frame = self.read()
+                frame = self.get_frame()
                 if frame is None:
                     break
                 yield frame
@@ -65,7 +74,7 @@ if cv2:
             self.close()
 
         #Current position of the video file in
-        # milliseconds or video capture timestamp.
+        #milliseconds or video capture timestamp.
         def get_timestamp(self):
             """Get the position in the video in milliseconds."""
             return self.cap.get(cv2.CAP_PROP_POS_MSEC)

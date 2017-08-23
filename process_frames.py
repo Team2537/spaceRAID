@@ -19,6 +19,7 @@ import difflib
 import logging # I will get to adding this eventually.
 import tesserocr
 from PIL import Image
+from numpy import ndarray
 from extract_lib import extract_image
 # Format: (x, y, width, height) Assumed frame size (512, 288)
 match_name_rect = (107, 224, 103, 16)
@@ -58,6 +59,10 @@ NUMBER_CORRENTIONS = {
     "1a": "78", # Evidently a mistake the system will make
     
     }
+
+def is_numpy_image(image):
+    """Check that the image is a numpy image, or really an array of pixels."""
+    return isinstance(image, ndarray)
 
 def similar(a, b):
     """Evaluate the similarity of two strings."""
@@ -282,10 +287,16 @@ def read_image(image):#, debug = False):
     """
     assert not NAME_POOL.empty(), "process_frames.NAME_POOL not initalized."
     assert not TIME_POOL.empty(), "process_frames.TIME_POOL not initalized."
+
+    # Verify this is a valid image.
+    if not is_numpy_image(image):
+        # Error, bad image.
+        raise TypeError("Image should have been a numpy array, not %r." % image)
 ##    if debug:
 ##        global name, time_reg, time_ext
     #img_file = os.path.join(IMAGE_FOLDER, img_file)
     #orig_frame = cv2.imread(img_file)
+    
     # Extract the 2 portions with information.
     # Crop numpy image. NOTE: its img[y: y + h, x: x + w]
     nx, ny, nw, nh = match_name_rect

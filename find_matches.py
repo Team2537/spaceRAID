@@ -78,7 +78,7 @@ def read_moment(video, frame_count = None):
 
     # Is the percentage of the most common frame greater than the needed
     # percentage?
-    if float(n)/sum(moment.values())>MOMENT_IDENTICAL_PERCENTAGE:
+    if float(n)/sum(moment.values()) > MOMENT_IDENTICAL_PERCENTAGE:
         # Yes, Success!
         # Return the common than!
         return common

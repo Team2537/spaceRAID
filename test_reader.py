@@ -20,8 +20,19 @@ import video_loader
 import process_frames
 
 # For the talking to screen
-import user
-import dummy_easygui as easygui
+try:
+    from dummy_easygui import tkinter_check
+except ImportError:
+    # No dummy_easygui, just assume easygui works.
+    import easygui
+else:
+    if tkinter_check():
+        # Yes, we can use easygui.
+        import easygui
+    else:
+        # Use Dummy Command Line Package.
+        import dummy_easygui as easygui
+    del tkinter_check # Clean-Up
 
 __author__ = "Matthew Schweiss"
 __version__ = "0.5"
@@ -224,7 +235,11 @@ def test(src, VIDEO_WINDOW = VIDEO_WINDOW, LOGGING_LEVEL = LOGGING_LEVEL):
     exc_start_time = time.time()
 
     try:
-        for img_num, (frame, real_name, real_time) in enumerate(src):
+        for img_num, k in enumerate(src):
+            if isinstance(k, (tuple, list)):
+                frame, real_name, real_time = k
+            else:
+                frame, real_name, real_time = k, None, None
 
             frame_time_start = time.time() # Timing
 
@@ -249,8 +264,9 @@ def test(src, VIDEO_WINDOW = VIDEO_WINDOW, LOGGING_LEVEL = LOGGING_LEVEL):
                 print("Name:\t%r\t%r" % (real_name, read_name))
                 print("Time:\t%r\t%r" % (real_time, read_time))
             elif VERBOSE == 4:
-                print("F %d\tName A:%s\tR:%r\tTime A:%s\tR:%r" %
-                      (img_num, real_name, read_name, real_time, read_time))
+                print("F %d\tName A:%s\tR:%r\tTime A:%s\tR:%s" %
+                      (img_num, real_name, read_name, real_time,
+                       repr(read_time) if read_time is not None else read_time))
             elif VERBOSE == 3:
                 print("F %d\t%r\t%r" % (img_num, read_nume, read_time))
             elif VERBOSE == 2:
@@ -258,7 +274,7 @@ def test(src, VIDEO_WINDOW = VIDEO_WINDOW, LOGGING_LEVEL = LOGGING_LEVEL):
                       (img_num, frame_time))
             elif VERBOSE == 1:
                 # Print 1,2,3,4,5,6...9,10,20,30,40,...,100,200,300...
-                # If this is a multiple of 10, 100, or 1000 corrospundingly.
+                # If this is a multiple of 10, 100, or 1000 correspondingly.
                 # log10(0) will crash so 0 is allowed expicitly.
                 if img_num == 0 or img_num % (10 ** math.floor(math.log10(img_num))) == 0:
                     print("Processed up to frame %d in %.3f seconds." %
@@ -268,11 +284,27 @@ def test(src, VIDEO_WINDOW = VIDEO_WINDOW, LOGGING_LEVEL = LOGGING_LEVEL):
                 pass
             # real_name or real_time could be None if the read failed.
             # In this case. If it is None, do similar as if it were "".
-            read_name_results.append(
-                (read_name, similar(real_name, read_name or ""), read_name == real_name))
+            if real_name is not None:
+                read_name_results.append(
+                    (read_name,
+                     similar(real_name, read_name or ""),
+                     read_name == real_name))
+            else:
+                read_name_results.append(
+                    (read_name,
+                     None,
+                     None))
 
-            read_time_results.append(
-                (read_time, similar(real_time, read_time or ""), read_time == real_time))
+            if real_time is not None:
+                read_time_results.append(
+                    (read_time,
+                     similar(real_time, read_time or ""),
+                     read_time == real_time))
+            else:
+                read_time_results.append(
+                    (read_time,
+                     None,
+                     None))
 
             if read_name is None or read_time is None:
                 failed_frames += 1
@@ -295,20 +327,30 @@ def test(src, VIDEO_WINDOW = VIDEO_WINDOW, LOGGING_LEVEL = LOGGING_LEVEL):
 
         print("%s Frames\tPartial Matches\tPerfect Matches" % img_num)
 
-        if read_name_results:
-            name_partial_percent = average(zip(*read_name_results)[1]) * 100
-            name_perfect_percent = average(zip(*read_name_results)[2]) * 100
+        not_none = lambda x: x is not None
+        # Print Name    
+        try:
+            name_partial_percent = average(
+                filter(not_none, zip(*read_name_results)[1])) * 100
+            name_perfect_percent = average(
+                filter(not_none, zip(*read_name_results)[2])) * 100
             print("Name\t\t%6.2f%%\t%6.2f%%" %
                   (name_partial_percent, name_perfect_percent))
-        else:
-            print("Name\t\tN/A\tN/A")
-        if read_time_results:
-            time_partial_percent = average(zip(*read_time_results)[1]) * 100
-            time_perfect_percent = average(zip(*read_time_results)[2]) * 100
+        except (IndexError,         # Caused by no results
+                ZeroDivisionError   # Caused by "None" results.
+                ):
+            print("Name\t\tN/A\t\tN/A")
+        try:
+            time_partial_percent = average(
+                filter(not_none, zip(*read_time_results)[1])) * 100
+            time_perfect_percent = average(
+                filter(not_none, zip(*read_time_results)[2])) * 100
             print("Time\t\t%6.2f%%\t%6.2f%%" %
                   (time_partial_percent, time_perfect_percent))
-        else:
-            print("Time\t\tN/A\tN/A")
+        except (IndexError,         # Caused by no results
+                ZeroDivisionError   # Caused by "None" results.
+                ):
+            print("Time\t\tN/A\t\tN/A")
         print("Processed Frames: %d" % len(exc_time_results))
         print("Failed Frames: %d" % failed_frames)
         if exc_time_results:
@@ -319,81 +361,88 @@ def test(src, VIDEO_WINDOW = VIDEO_WINDOW, LOGGING_LEVEL = LOGGING_LEVEL):
 
 def main(args = None, VIDEO_WINDOW=VIDEO_WINDOW,LOGGING_LEVEL=LOGGING_LEVEL):
     # Get test Information
-    print("Hello! What do you want to test?")
-    print("1) process_frames.read_frame()")
-    print("2) find_matches.read_moment()")
-    test_num = raw_input("Which test do you want to run? (1 or 2): ").strip()
-    while test_num != "1" and test_num != "2":
-        test_num = raw_input("Sorry, the answer must be either 1 or 2: ").strip()
+    test_num = easygui.indexbox(
+        msg="Hello! What do you want to test?",
+        choices=("process_frames.read_frame()", "find_matches.read_moment()")
+        )
+
+    if   test_num == 0:
+        test_func = process_frames.read_image
+
+    elif test_num == 1:
+        test_func = find_matches.read_moment
+
+    if test_num is None:
+        # Exit
+        return
 
     # Get VIDEO_WINDOW if needed.
     if VIDEO_WINDOW is None:
-        VIDEO_WINDOW = raw_input(
-            "Do you want to display the video feed?: "
-            ).strip().upper()
-        while VIDEO_WINDOW[0] != "Y" and VIDEO_WINDOW[0] != "N":
-            VIDEO_WINDOW = raw_input("Sorry, the answer must be Y(es) or N(o): ").upper()
+        VIDEO_WINDOW = easygui.ynbox("Do you want to display the video feed?")
 
-        VIDEO_WINDOW = VIDEO_WINDOW[0] != "N"
+        if VIDEO_WINDOW is None:
+            # Exit
+            return
 
     # Get LOGGING_LEVEL if needed.
     if LOGGING_LEVEL is None:
-        print("What amount of debug information do you want to see?")
-        print("1) DEBUG and more severe (Most Output).")
-        print("2) INFO and more severe.")
-        print("3) WARNING and more severe.")
-        print("4) ERROR and more severe.")
-        print("5) CRITICAL and more severe.")
-        print("6) FATAL (Least Output).")
-        LOGGING_LEVEL = raw_input("What debug level do you want?: ")
-        while LOGGING_LEVEL not in ("1", "2", "3", "4", "5", "6"):
-            LOGGING_LEVEL = raw_input("Sorry, answer must be 1, 2, 3, 4, 5, or 6.: ")
-
-        if   LOGGING_LEVEL == "1": LOGGING_LEVEL = logging.DEBUG
-        elif LOGGING_LEVEL == "2": LOGGING_LEVEL = logging.INFO
-        elif LOGGING_LEVEL == "3": LOGGING_LEVEL = logging.WARNING
-        elif LOGGING_LEVEL == "4": LOGGING_LEVEL = logging.ERROR
-        elif LOGGING_LEVEL == "5": LOGGING_LEVEL = logging.CRITICAL
-        elif LOGGING_LEVEL == "6": LOGGING_LEVEL = logging.FATAL
+        LOGGING_LEVEL = easygui.indexbox(
+            msg="What amount of debug information do you want to see?",
+            choices=("DEBUG and more severe (Most Output).",
+                     "INFO and more severe.",
+                     "WARNING and more severe.",
+                     "ERROR and more severe.",
+                     "CRITICAL and more severe.",
+                     "FATAL (Least Output).")
+            )
+       
+        if   LOGGING_LEVEL == 0: LOGGING_LEVEL = logging.DEBUG
+        elif LOGGING_LEVEL == 1: LOGGING_LEVEL = logging.INFO
+        elif LOGGING_LEVEL == 2: LOGGING_LEVEL = logging.WARNING
+        elif LOGGING_LEVEL == 3: LOGGING_LEVEL = logging.ERROR
+        elif LOGGING_LEVEL == 4: LOGGING_LEVEL = logging.CRITICAL
+        elif LOGGING_LEVEL == 5: LOGGING_LEVEL = logging.FATAL
 
     # Allow for more logging information.
     logging.getLogger().setLevel(LOGGING_LEVEL)
 
-    if test_num == "1":
+    if test_num == 0:
         # process_frames.read_frame() test.
         # images or video.
-        print("What test set do you want to use?: ")
-        print('1) Video "Qualification Match 5.mov" with 7995 frames.')
-        print('2) Video "Saturday 3-11-17_ND.mp4" with 1,194,263 frames.')
-        print("3) Set of 7995 png images.")
-        print("4) Set of 56 jpg images.")
-        test_set = raw_input("Which test set do you want to use? (1 - 4)?: ").strip()
-        while test_set not in ("1", "2", "3", "4"):
-            test_set = raw_input("Sorry, the answer must be 1, 2, 3, or 4: ").strip()
-
+        test_set = easygui.indexbox(
+            msg = "What test set do you want to use?",
+            choices = ('Video "Qualification Match 5.mov" with 7995 frames.',
+                       'Video "Saturday 3-11-17_ND.mp4" with 1,194,263 frames.',
+                       'Set of 7995 png images.',
+                       'Set of 56 jpg images.')
+            )
     else:
         # find_matches.read_moment()
         # video only.
-        print("What test set do you want to use?: ")
-        print('1) Video "Qualification Match 5.mov" with 7995 frames.')
-        print('2) Video "Saturday 3-11-17_ND.mp4" with 1,194,263 frames.')
-        #print("3) Set of 7995 png images.") Not valid.
-        #print("4) Set of 56 jpg images.") Not valid.
-        test_set = raw_input  ("Which test set do you want to use? (1 or 2)?: ").strip()
-        while (test_set != "1") and (test_set != "2"):
-            test_set = raw_input("Sorry, the answer must be 1 or 2: ").strip()
+        test_set = easygui.indexbox(
+            msg = "What test set do you want to use?",
+            choices = ('Video "Qualification Match 5.mov" with 7995 frames.',
+                       'Video "Saturday 3-11-17_ND.mp4" with 1,194,263 frames.',
+                       )
+            )
+
+    if test_set is None:
+        # Exit
+        return
 
     basename = os.path.dirname(__file__)
 
-    if   test_set == "1":
+    if   test_set == 0:
         # Qualification Video.
-        src = video_loader.Video(os.path.join(basename, "Qualification Match 5.mov"))
+        src = video_loader.Video(
+            os.path.join(basename, "./Examples/Qualification Match 5.mov"))
 
-    elif test_set == "2":
+    elif test_set == 1:
         # Saturday huge video.
-        src = video_loader.Video(os.path.join(basename, "Saturday 3-11-17_ND.mp4"))
+        src = video_loader.Video(
+            os.path.join(basename, "./Examples/Saturday 3-11-17_ND.mp4"))
 
-    elif test_set == "3":
+    elif test_set == 2:
         # "All" Set.
         src = Image_Transcript(
                 os.path.join(basename, "./Examples/All"),
@@ -401,7 +450,7 @@ def main(args = None, VIDEO_WINDOW=VIDEO_WINDOW,LOGGING_LEVEL=LOGGING_LEVEL):
                 os.path.join(basename, "./Examples/All/textInImages.txt")
                 )
 
-    elif test_set == "4":
+    elif test_set == 3:
         # "Every5" Set.
         src = Image_Transcript(
                 os.path.join(basename, "./Examples/Every5Sec"),
