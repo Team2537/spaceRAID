@@ -177,11 +177,10 @@ class Image_Transcript():
         while True:
             r = self.next()
             if r is None:
-                logging.debug("Image Transcript Didn't read anything.")
+                logging.debug("Image Transcript Read EOF.")
                 raise StopIteration()
 
             else:
-                logging.debug("Image Transcript Read %s." % repr(r))
                 yield r
 
     @property

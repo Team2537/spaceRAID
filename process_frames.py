@@ -31,6 +31,8 @@ try:
     import Queue as queue
 except ImportError:
     import queue
+
+MATCH_LENGTH = 180
     
 __all__ = ["read_image", "ALLOW_FAILURE", "VERBOSE", "REG_NAME_ENLARGE",
            "REG_TIME_ENLARGE", "EXT_TIME_ENLARGE", "ADAPTIVE_CLASSIFIER"]
@@ -204,11 +206,29 @@ def smart_read_time(reg_time, ext_time):
         time = ext_time
     else:
         time = reg_time
-    
+
+    # Do some simple processing.
     time = time.strip()
-    if time.isdigit() and (time[0] != "0" or time == "0"):
+
+    # Sometimes a "1" is appended to the end of a long time.
+    # Remove it to improve reliability.
+    if len(time) == 4 and time[-1] == "1":
+        time = time[:3]
+
+    # Sometimes a "0" is added to the beginning of the text.
+    # Remove it to improve reliability.
+    # This does require some testing.
+    if len(time) > 1 and time[0] == "0":
+        time = time[1:]
+
+    # Finished processing.
+    
+    # See if this is a valid string and return.
+    # Make sure the time is a number and is a decent length.
+    if time.isdigit() and int(time) < MATCH_LENGTH:
         return time
-    if ALLOW_FAILURE:
+    
+    elif ALLOW_FAILURE:
         return None
     else:
         return ""
@@ -312,34 +332,43 @@ def read_image(image):#, debug = False):
     name_image = Image.fromarray(enlarge(name_frame, REG_NAME_ENLARGE))
     # Get the reader from the pool to read.
     read_name = NAME_POOL.get()
-    name    = read_name(name_image)
+    # Remove unicode if present.
+    name_raw  = str(read_name(name_image))
     try:
         NAME_POOL.put_nowait(read_name)
     except queue.Full:
         logging.error("Could not put name reader back in pool.")
 
     # Smart read name.
-    name = smart_read_name(name)
+    name = smart_read_name(name_raw)
 
     if not name:
         # We are done, negative match.
-        time = ""
+        time_raw = "NA"
+        time_ext = "NA"
+        time     = ""
     else:
         # Otherwise, analyize time.
         # Enlarge the frames and to the extraction.
-        time_image = Image.fromarray(enlarge(time_frame, REG_TIME_ENLARGE))
-        time_ext_image = Image.fromarray(enlarge(extract_image(time_frame),EXT_TIME_ENLARGE))
+        time_image     = Image.fromarray(
+            enlarge(time_frame,               REG_TIME_ENLARGE))
+        time_ext_image = Image.fromarray(
+            enlarge(extract_image(time_frame),EXT_TIME_ENLARGE))
 
         read_time = TIME_POOL.get()
-        time_reg= read_time(time_image)
-        time_ext= read_time(time_ext_image)
+        # Remove unicode if present.
+        time_raw  = str(read_time(time_image))
+        time_ext  = str(read_time(time_ext_image))
         try:
             TIME_POOL.put_nowait(read_time)
         except queue.Full:
             logging.error("Could not put time reader back in pool.")
 
-        time = smart_read_time(time_reg, time_ext)
+        time = smart_read_time(time_raw, time_ext)
+    # Log the initial reading and conversion.
+    # INFO:root:Name Read: 'Qualmution 5 M 78\n\n'   -> 'Qualification 5 of 78'.
+    # INFO:root:Time Read: '13 \n\n' (' 3 \n\n')     -> '13'.
+    logging.info("Name Read: %-28r"      " -> %r." % (name_raw, name))
+    logging.info("Time Read: %-13r (%-12r) -> %r." % (time_raw, time_ext, time))
 
-    logging.info("Image Results Name: %s Time: %s" % (name, time))
-    
-    return str(name), str(time) # Remove unicode if present.
+    return name, time
