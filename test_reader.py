@@ -19,6 +19,7 @@ import logging
 import video_loader
 import process_frames
 
+from collections import OrderedDict, namedtuple
 # For the talking to screen
 try:
     from dummy_easygui import tkinter_check
@@ -157,7 +158,7 @@ class Image_Transcript():
                         self.last_frame=[frame_number,frame,name_result,time_result]
 
                         self.next_frame = None
-                        return self.last_frame[1:] # Don't return frame_number.
+                        return tuple(self.last_frame[1:]) # Don't return frame_number.
                     else:
                         # This frame is actually for a frame that has not happened yet.
                         # The current frame is actually the same as the last frame.
@@ -190,14 +191,204 @@ class Image_Transcript():
         return self.source.closed
 
     def close(self):
+        """Close the file."""
         if not self.closed:
             self.source.close()
 
     def __enter__(self):
+        """Begin use in a "with" statment."""
         pass
 
     def __exit__(self, exc_type, exc_value, traceback):
+        """Close the file."""
         self.close()
+
+class Result_Handler():
+    """
+    A class to collect the readings, store, save, and analyze the data.
+    This allows for much more arithmatic to be done but with a less
+    clutter in test().
+    """
+    __all__ = ("add_frame", "total_time")
+    
+    ENTRY_TYPE      = namedtuple("Entry", ("type","result","real_text","time"))
+    IMAGE_DATA_TYPE = namedtuple("Image_Data", ("number","name","time"))
+
+    # A small static function.
+    not_none = lambda x: x is not None
+    
+    def __init__(self, function_named):
+        """Create a Result Handler, function is the name of the function used
+           in the test.
+        """
+        self.results = OrderedDict()
+        #   Dict of the number of each image.
+        #   Each image has the following attibutes (in list).
+        #       number -> The frame number of the image.
+        #       name -> Entry or None
+        #       time -> Entry or None
+        #           Each entry has the following attributes.
+        #               type       -> Either "name" or "time".
+        #               result     -> The text that was read from the image.
+        #               real_text  -> The actual text that goes with this image.
+        #               time       -> The time to process the text.
+        self.total_time = None
+        self.entries = OrderedDict()
+
+    # DATA COLLECTION
+
+##    @property
+##    def _active_frame
+##    def add_name(frame_number, result = None, real_text = None, time = None):
+##        """Add the name information of an image to the handler."""
+##        # Step 1, make sure the active image has been finished.
+##        if self.active_number and self.active_frame.number != frame_number:
+##            # So there is an open frame but not for this image.
+##    def add_time(image_number, result = None, real_text = None, time = None):
+##        """Add the time information of an image to the handler."""
+##        if image_number in self.entries:
+##            self.entries[image_number] = self.entries[image_number]._replace(
+##                number = image_number,
+##                time = self.ENTRY_TYPE("time", result, real_text, time))
+
+    def add_frame(self, image_number, name_result, name_real_text, name_time,
+                  time_result, time_real_text, time_time):
+        """Add all of the information of a frame to the handler."""
+        if image_number in self.entries:
+            logging.error("Tried to set the frame %d again." % image_number)
+            raise ValueError("Frame %d has already been saved." % image_number)
+
+        # else
+        self.entries[image_number] = self.IMAGE_DATA_TYPE(
+            number = image_number,
+            name=self.ENTRY_TYPE("name",name_result,name_real_text,name_text),
+            time=self.ENTRY_TYPE("name",time_result,time_real_text,time_text)
+            )
+
+    # ANALYTICS
+    def _get_set(self, key, function):
+        """Under the cover get the values and create the average.
+           Key is a function that is given an entry and returns the value
+           to be averaged. Key can return None values as these are checked for
+           and removed."""
+        if function is None:
+            return op(key(f) for f in self.entries.values)
+        # else
+        return op(
+            filter(self.not_none,
+                   (key(f) for f in self.entries.values if function(f))
+                   )
+            )
+
+    # A list of a few "filters" for the analytics functions
+    FAILED_FRAME = lambda x: x.name is None or x.time is None
+    CORRECT_NAME_FRAME = lambda x:x.name.result==x.name.real_text!=None
+    CORRECT_TIME_FRAME = lambda x:x.time.result==x.time.real_text!=None
+    CORRECT_FRAME = (lambda x:CORRECT_NAME_FRAME(x) and CORRECT_TIME_FRAME(x))
+
+    def count_frames(self, function = None):
+        """Count the total number of frames that I have data for."""
+        # Works so long as no frame is "None", which should not happen.
+        # Just in case, using "lambda x:1" instead of "lambda x:x" will fix that.
+        if function is None:
+            return len(self.entries)
+        # else
+        return len(self._op_attr(lambda x:True, function))
+
+    #-----------------------------------------------------------------
+    # Do we need this functions? I think not.
+    def count_failed_frames(self):
+        """Count the number of frames that failed to return values."""
+        return self.count_frames(self.FAILED_FRAME)
+
+    def count_correct_frames(self):
+        """Count the number of frames that  were correctly read."""
+        return self.count_frames(self.CORRECT_FRAME)
+    
+    def count_correct_name_frames(self):
+        """Count the number of frames that were correct."""
+        return self.count_frames(CORRECT_NAME_FRAME)
+    
+    def count_correct_time_frames(self):
+        """Count the number of name frames that were correct."""
+        return self.count_frames(CORRECT_TIME_FRAME)
+    # I mean, they are all one line redirects.
+    #----------------------------------------------------------------
+    
+    def percent_partial_name_matches(self, function = None):
+        """The average simliarity of a name result to its real answer."""
+        return 100. * average(self._op_attr(
+            lambda x:similiar(x.name.result, x.name.real_text), function))
+
+    def percent_partial_time_matches(self, function = None):
+        """The average simliarity of a time result to its real answer."""
+        return 100 * average(self._op_attr(
+            lambda x:similiar(x.time.result, x.time.real_text), function))
+
+    # total_time is an attribute
+    
+    def average_time(self, function = None):
+        """The average time for each frame to be processed.
+           A filter can be specified to restrict the set the average is taken
+           from.
+        """
+        return average(self._op_attr(lambda x:x.name.time+x.time.time,function))
+
+    def average_name_time():
+        """The average time for each name text to be processed.
+           A filter can be specified to restrict the set the average is taken
+           from.
+        """
+        return average(self.op_attr(lambda x:x.name.time, function))
+    
+    def average_time_time():
+        """The average time for each time ext to be processed.
+           A filter can be specified to restrict the set the average is taken
+           from.
+        """
+        return average(self.op_attr(lambda x:x.time.time, function))
+
+##
+##    # Name related analytics.
+####    def successful
+##
+##
+##
+##
+##
+##
+##
+##
+##
+##    
+##
+##    def average_time_name(self, function = None):
+##        """Figure out the average time for each frame to be processed.
+##           A filter can be specified to restrict the set the average is taken
+##           from.
+##        """
+##        return self._average_attribute(lambda x: x.name.time, function)
+##
+##    def average_time_time(self, function = None):
+##        """Figure out the average time for each frame to be processed.
+##           A filter can be specified to restrict the set the average is taken
+##           from.
+##        """
+##        return self._average_attribute(lambda x: x.time.time, function)
+##
+##    def average_(self, function = None):
+##        """Figure out the average time for each frame to be processed.
+##           A filter can be specified to restrict the set the average is taken
+##           from.
+##        """
+##        return self._average_attribute(key = lambda x: x.time.time, function)
+##
+##    def average_time_time(self, function = None):
+##        """Figure out the average time for each frame to be processed.
+##           A filter can be specified to restrict the set the average is taken
+##           from.
+##        """
+##        return self._average_attribute(key = lambda x: x.time.time, function)
 
 def test(src, VIDEO_WINDOW = VIDEO_WINDOW, LOGGING_LEVEL = LOGGING_LEVEL):
     """Test the process frames."""
