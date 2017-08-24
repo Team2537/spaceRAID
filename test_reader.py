@@ -134,13 +134,13 @@ class Image_Transcript():
                     # Next frame is NOT immediately after next frame.
                     # Return the last frame again.
                     self.last_frame[0] += 1
-                    return self.last_frame[1:] # Don't return frame_number
+                    return tuple(self.last_frame[1:])# Don't return frame_number
                 elif self.last_frame[0] + 1 >= self.next_frame[0]:
                     # We have gone through all of the required frames.
                     # Finish this iteration.
                     self.last_frame = self.next_frame
                     self.next_frame = None
-                    return self.last_frame[1:] # Don't return frame_number
+                    return tuple(self.last_frame[1:])# Don't return frame_number
 
             # Otherwise, load another frame.
             else:
@@ -154,7 +154,7 @@ class Image_Transcript():
                     if self.last_frame is None or \
                        frame_number == self.last_frame[0] + 1:
                         # This is the next frame, go ahead and return it.
-                        self.last_frame=(frame_number,frame,name_result,time_result)
+                        self.last_frame=[frame_number,frame,name_result,time_result]
 
                         self.next_frame = None
                         return self.last_frame[1:] # Don't return frame_number.
@@ -162,7 +162,7 @@ class Image_Transcript():
                         # This frame is actually for a frame that has not happened yet.
                         # The current frame is actually the same as the last frame.
                         #self.last_frame = self.next_frame
-                        self.next_frame=(frame_number,frame,name_result,time_result)
+                        self.next_frame=[frame_number,frame,name_result,time_result]
 
                         # Rerun to return first frame.
                         rerun = True

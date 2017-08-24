@@ -124,13 +124,6 @@ def time_reader():
                 ocr.ClearAdaptiveClassifier()
             # Turns out this optimization does help time readings a lot!
             # From a 68.73% perfect read to a 75.45%!
-
-##read_name = name_reader().send
-##read_time = time_reader().send
-##
-### Start the functions by passing None
-##read_name(None)
-##read_time(None)
        
 def smart_read_name(name_text):
     """Post Process the name text."""
@@ -195,6 +188,8 @@ def smart_read_name(name_text):
 
 def smart_read_time(reg_time, ext_time):
     """Tead the time smartly. Post-Processing."""
+    # First, remove spaces to make sure everything is good.
+    reg_time, ext_time = reg_time.strip(), ext_time.strip()
     # If the extracted value is blank then this is blank unless
     # regular time is at least 3 characters.
     if not ext_time and len(reg_time) <= 2:
@@ -202,7 +197,10 @@ def smart_read_time(reg_time, ext_time):
         return ""
     # Now, also. If extracted value has a number but regular time is blank,
     # Use the extracted value.
-    if not reg_time:
+
+    # A common mistake the match makes is confusing "0" with "1" or "4".
+    # Ext_time does not have this problem but can get it wrong.
+    if not reg_time or (ext_time == "0" and len(reg_time) == 1):
         time = ext_time
     else:
         time = reg_time
