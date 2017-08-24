@@ -209,19 +209,18 @@ class Result_Handler():
     This allows for much more arithmatic to be done but with a less
     clutter in test().
     """
-    __all__ = ("add_frame", "total_time")
+    __all__ = ('CORRECT_FRAME', 'CORRECT_NAME_FRAME', 'CORRECT_TIME_FRAME',
+               'FAILED_FRAME', 'add_frame', 'average_name_time', 'average_time',
+               'average_time_time', 'percent_partial_name_matches',
+               'percent_partial_time_matches', 'total_time')
     
     ENTRY_TYPE      = namedtuple("Entry", ("type","result","real_text","time"))
     IMAGE_DATA_TYPE = namedtuple("Image_Data", ("number","name","time"))
-
-    # A small static function.
-    not_none = lambda x: x is not None
     
     def __init__(self, function_named):
         """Create a Result Handler, function is the name of the function used
            in the test.
         """
-        self.results = OrderedDict()
         #   Dict of the number of each image.
         #   Each image has the following attibutes (in list).
         #       number -> The frame number of the image.
@@ -236,20 +235,6 @@ class Result_Handler():
         self.entries = OrderedDict()
 
     # DATA COLLECTION
-
-##    @property
-##    def _active_frame
-##    def add_name(frame_number, result = None, real_text = None, time = None):
-##        """Add the name information of an image to the handler."""
-##        # Step 1, make sure the active image has been finished.
-##        if self.active_number and self.active_frame.number != frame_number:
-##            # So there is an open frame but not for this image.
-##    def add_time(image_number, result = None, real_text = None, time = None):
-##        """Add the time information of an image to the handler."""
-##        if image_number in self.entries:
-##            self.entries[image_number] = self.entries[image_number]._replace(
-##                number = image_number,
-##                time = self.ENTRY_TYPE("time", result, real_text, time))
 
     def add_frame(self, image_number, name_result, name_real_text, name_time,
                   time_result, time_real_text, time_time):
@@ -295,25 +280,25 @@ class Result_Handler():
         # else
         return len(self._op_attr(lambda x:True, function))
 
-    #-----------------------------------------------------------------
-    # Do we need this functions? I think not.
-    def count_failed_frames(self):
-        """Count the number of frames that failed to return values."""
-        return self.count_frames(self.FAILED_FRAME)
-
-    def count_correct_frames(self):
-        """Count the number of frames that  were correctly read."""
-        return self.count_frames(self.CORRECT_FRAME)
-    
-    def count_correct_name_frames(self):
-        """Count the number of frames that were correct."""
-        return self.count_frames(CORRECT_NAME_FRAME)
-    
-    def count_correct_time_frames(self):
-        """Count the number of name frames that were correct."""
-        return self.count_frames(CORRECT_TIME_FRAME)
-    # I mean, they are all one line redirects.
-    #----------------------------------------------------------------
+##    #-----------------------------------------------------------------
+##    # Do we need this functions? I think not.
+##    def count_failed_frames(self):
+##        """Count the number of frames that failed to return values."""
+##        return self.count_frames(self.FAILED_FRAME)
+##
+##    def count_correct_frames(self):
+##        """Count the number of frames that  were correctly read."""
+##        return self.count_frames(self.CORRECT_FRAME)
+##    
+##    def count_correct_name_frames(self):
+##        """Count the number of frames that were correct."""
+##        return self.count_frames(CORRECT_NAME_FRAME)
+##    
+##    def count_correct_time_frames(self):
+##        """Count the number of name frames that were correct."""
+##        return self.count_frames(CORRECT_TIME_FRAME)
+##    # I mean, they are all one line redirects.
+##    #----------------------------------------------------------------
     
     def percent_partial_name_matches(self, function = None):
         """The average simliarity of a name result to its real answer."""
@@ -347,48 +332,6 @@ class Result_Handler():
            from.
         """
         return average(self.op_attr(lambda x:x.time.time, function))
-
-##
-##    # Name related analytics.
-####    def successful
-##
-##
-##
-##
-##
-##
-##
-##
-##
-##    
-##
-##    def average_time_name(self, function = None):
-##        """Figure out the average time for each frame to be processed.
-##           A filter can be specified to restrict the set the average is taken
-##           from.
-##        """
-##        return self._average_attribute(lambda x: x.name.time, function)
-##
-##    def average_time_time(self, function = None):
-##        """Figure out the average time for each frame to be processed.
-##           A filter can be specified to restrict the set the average is taken
-##           from.
-##        """
-##        return self._average_attribute(lambda x: x.time.time, function)
-##
-##    def average_(self, function = None):
-##        """Figure out the average time for each frame to be processed.
-##           A filter can be specified to restrict the set the average is taken
-##           from.
-##        """
-##        return self._average_attribute(key = lambda x: x.time.time, function)
-##
-##    def average_time_time(self, function = None):
-##        """Figure out the average time for each frame to be processed.
-##           A filter can be specified to restrict the set the average is taken
-##           from.
-##        """
-##        return self._average_attribute(key = lambda x: x.time.time, function)
 
 def test(src, VIDEO_WINDOW = VIDEO_WINDOW, LOGGING_LEVEL = LOGGING_LEVEL):
     """Test the process frames."""
