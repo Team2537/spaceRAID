@@ -42,11 +42,22 @@ __all__ = ["VERBOSE", "TRANSCRIPT_FILE", "main"]
 
 VERBOSE = 4 # EDIT HOW MUCH IS PRINTED
 
-# input for python 2.X and 3.X
+# input, basestring, and long for python 2.X and 3.X
 try:
     raw_input
 except NameError:
     raw_input = input
+try:
+    long
+except NameError:
+    long = int
+try:
+    basestring
+except NameError:
+    try:
+        basestring = str, unicode
+    except NameError:
+        basestring = str
 
 # For more consice repr
 from repr import repr
@@ -214,31 +225,47 @@ class Result_Handler():
                'average_time_time', 'percent_partial_name_matches',
                'percent_partial_time_matches', 'total_time')
     
-    ENTRY_TYPE      = namedtuple("Entry", ("type","result","real_text","time"))
-    IMAGE_DATA_TYPE = namedtuple("Image_Data", ("number","name","time"))
+    ENTRY_TYPE      = namedtuple("Entry", ("type","result","real_text"))
+    IMAGE_DATA_TYPE = namedtuple("Image_Data", ("number","name","time","duration"))
+
+    # For the filtering.
+    not_none = staticmethod(lambda x: x is not None)
     
-    def __init__(self, function_named):
+    def __init__(self, test_function):
         """Create a Result Handler, function is the name of the function used
            in the test.
         """
         #   Dict of the number of each image.
         #   Each image has the following attibutes (in list).
-        #       number -> The frame number of the image.
-        #       name -> Entry or None
-        #       time -> Entry or None
+        #       number      -> The frame number of the image.
+        #       name        -> Entry or None
+        #       time        -> Entry or None
+        #       duration    -> Time for the frame to be processed.
         #           Each entry has the following attributes.
         #               type       -> Either "name" or "time".
         #               result     -> The text that was read from the image.
         #               real_text  -> The actual text that goes with this image.
-        #               time       -> The time to process the text.
+        if not isinstance(test_function, basestring):
+            raise TypeError("test_function must be the name of the function being tested. Not %r." % test_function)
+        self.test_function = test_function
         self.total_time = None
         self.entries = OrderedDict()
 
     # DATA COLLECTION
 
-    def add_frame(self, image_number, name_result, name_real_text, name_time,
-                  time_result, time_real_text, time_time):
+    def add_frame(self, image_number, name_result, name_real_text,
+                  time_result, time_real_text, frame_time):
         """Add all of the information of a frame to the handler."""
+        # First, make sure image_number is a number.
+        if not isinstance(image_number, (int, long)):
+            raise TypeError("Image Number must be an integer or a long, not %r."
+                            % image_number)
+
+        # Then, make sure frame_time is a number.
+        if not isinstance(frame_time, (int, float, long)):
+            raise TypeError("Frame Time must be an integer or a long, not %r."
+                            % frame_time)
+            
         if image_number in self.entries:
             logging.error("Tried to set the frame %d again." % image_number)
             raise ValueError("Frame %d has already been saved." % image_number)
@@ -246,8 +273,9 @@ class Result_Handler():
         # else
         self.entries[image_number] = self.IMAGE_DATA_TYPE(
             number = image_number,
-            name=self.ENTRY_TYPE("name",name_result,name_real_text,name_text),
-            time=self.ENTRY_TYPE("name",time_result,time_real_text,time_text)
+            duration = frame_time,
+            name=self.ENTRY_TYPE("name", name_result, name_real_text),
+            time=self.ENTRY_TYPE("name", time_result, time_real_text)
             )
 
     # ANALYTICS
@@ -257,19 +285,21 @@ class Result_Handler():
            to be averaged. Key can return None values as these are checked for
            and removed."""
         if function is None:
-            return op(key(f) for f in self.entries.values)
+            return list(filter(self.not_none, (key(f) for f in self.entries.values())))
         # else
-        return op(
-            filter(self.not_none,
-                   (key(f) for f in self.entries.values if function(f))
-                   )
-            )
+        return list(filter(
+            self.not_none,(key(f) for f in self.entries.values() if function(f))
+            ))
 
     # A list of a few "filters" for the analytics functions
-    FAILED_FRAME = lambda x: x.name is None or x.time is None
-    CORRECT_NAME_FRAME = lambda x:x.name.result==x.name.real_text!=None
-    CORRECT_TIME_FRAME = lambda x:x.time.result==x.time.real_text!=None
-    CORRECT_FRAME = (lambda x:CORRECT_NAME_FRAME(x) and CORRECT_TIME_FRAME(x))
+    FAILED_FILTER       = staticmethod(
+        lambda x:x.name is None or x.time is None)
+    CORRECT_NAME_FILTER = staticmethod(
+        lambda x:x.name.result==x.name.real_text!=None)
+    CORRECT_TIME_FILTER = staticmethod(
+        lambda x:x.time.result==x.time.real_text!=None)
+    CORRECT_FILTER      = staticmethod(
+        lambda x:CORRECT_NAME_FRAME(x) and CORRECT_TIME_FRAME(x))
 
     def count_frames(self, function = None):
         """Count the total number of frames that I have data for."""
@@ -278,37 +308,41 @@ class Result_Handler():
         if function is None:
             return len(self.entries)
         # else
-        return len(self._op_attr(lambda x:True, function))
+        return len(self._get_set(lambda x: True, function))
 
 ##    #-----------------------------------------------------------------
 ##    # Do we need this functions? I think not.
 ##    def count_failed_frames(self):
 ##        """Count the number of frames that failed to return values."""
-##        return self.count_frames(self.FAILED_FRAME)
+##        return self.count_frames(self.FAILED_FILTER)
 ##
 ##    def count_correct_frames(self):
 ##        """Count the number of frames that  were correctly read."""
-##        return self.count_frames(self.CORRECT_FRAME)
+##        return self.count_frames(self.CORRECT_FILTER)
 ##    
 ##    def count_correct_name_frames(self):
 ##        """Count the number of frames that were correct."""
-##        return self.count_frames(CORRECT_NAME_FRAME)
+##        return self.count_frames(CORRECT_NAME_FILTER)
 ##    
 ##    def count_correct_time_frames(self):
 ##        """Count the number of name frames that were correct."""
-##        return self.count_frames(CORRECT_TIME_FRAME)
+##        return self.count_frames(CORRECT_TIME_FILTER)
 ##    # I mean, they are all one line redirects.
 ##    #----------------------------------------------------------------
     
     def percent_partial_name_matches(self, function = None):
         """The average simliarity of a name result to its real answer."""
-        return 100. * average(self._op_attr(
-            lambda x:similiar(x.name.result, x.name.real_text), function))
+        return 100. * average(self._get_set(
+            lambda x: similar(x.name.result, x.name.real_text)
+            if x.name.result != None != x.name.real_text else None,
+            function))
 
     def percent_partial_time_matches(self, function = None):
         """The average simliarity of a time result to its real answer."""
-        return 100 * average(self._op_attr(
-            lambda x:similiar(x.time.result, x.time.real_text), function))
+        return 100 * average(self._get_set(
+            lambda x: similar(x.time.result, x.time.real_text)
+            if x.time.result != None != x.time.real_text else None,
+            function))
 
     # total_time is an attribute
     
@@ -317,31 +351,11 @@ class Result_Handler():
            A filter can be specified to restrict the set the average is taken
            from.
         """
-        return average(self._op_attr(lambda x:x.name.time+x.time.time,function))
-
-    def average_name_time():
-        """The average time for each name text to be processed.
-           A filter can be specified to restrict the set the average is taken
-           from.
-        """
-        return average(self.op_attr(lambda x:x.name.time, function))
-    
-    def average_time_time():
-        """The average time for each time ext to be processed.
-           A filter can be specified to restrict the set the average is taken
-           from.
-        """
-        return average(self.op_attr(lambda x:x.time.time, function))
+        return average(self._get_set(lambda x:x.duration, function))
 
 def test(src, VIDEO_WINDOW = VIDEO_WINDOW, LOGGING_LEVEL = LOGGING_LEVEL):
     """Test the process frames."""
-    # First, some options to the test to run.
-    global read_name_results, read_time_results
-    # Just to get everything on one line, here are some convinent functions.
-    read_name_results = []
-    read_time_results = []
-
-    exc_time_results  = []
+    results = Result_Handler("process_frames.read_frame()")
 
     if not VERBOSE:
         print("Frame")
@@ -376,8 +390,6 @@ def test(src, VIDEO_WINDOW = VIDEO_WINDOW, LOGGING_LEVEL = LOGGING_LEVEL):
             else:
                 frame, real_name, real_time = k, None, None
 
-            frame_time_start = time.time() # Timing
-
             # Video Window
             if VIDEO_WINDOW:
                 video_loader.show_image(frame)
@@ -386,9 +398,13 @@ def test(src, VIDEO_WINDOW = VIDEO_WINDOW, LOGGING_LEVEL = LOGGING_LEVEL):
             if frame is None:
                 logging.error("Frame failed to read.")
                 continue
+
+            frame_time_start = time.time() # Start Timing
+            
             read_name, read_time = process_frames.read_image(frame)
 
-            frame_time_stop = time.time() # Timing
+            frame_time_stop = time.time() # Stop Timing
+            
             frame_time = frame_time_stop - frame_time_start
             # Now use all of those breakdowns to come up with one super selection.
             if VERBOSE == 5:
@@ -416,31 +432,8 @@ def test(src, VIDEO_WINDOW = VIDEO_WINDOW, LOGGING_LEVEL = LOGGING_LEVEL):
                 pass
             # real_name or real_time could be None if the read failed.
             # In this case. If it is None, do similar as if it were "".
-            if real_name is not None:
-                read_name_results.append(
-                    (read_name,
-                     similar(real_name, read_name or ""),
-                     read_name == real_name))
-            else:
-                read_name_results.append(
-                    (read_name,
-                     None,
-                     None))
-
-            if real_time is not None:
-                read_time_results.append(
-                    (read_time,
-                     similar(real_time, read_time or ""),
-                     read_time == real_time))
-            else:
-                read_time_results.append(
-                    (read_time,
-                     None,
-                     None))
-
-            if read_name is None or read_time is None:
-                failed_frames += 1
-            exc_time_results.append(frame_time)
+            results.add_frame(img_num, read_name, real_name,
+                              read_time, real_time, frame_time)
 
     except KeyboardInterrupt:
         print("KeyboardInterrupt")
@@ -462,10 +455,9 @@ def test(src, VIDEO_WINDOW = VIDEO_WINDOW, LOGGING_LEVEL = LOGGING_LEVEL):
         not_none = lambda x: x is not None
         # Print Name    
         try:
-            name_partial_percent = average(
-                filter(not_none, zip(*read_name_results)[1])) * 100
-            name_perfect_percent = average(
-                filter(not_none, zip(*read_name_results)[2])) * 100
+            name_partial_percent = results.percent_partial_name_matches()
+            name_perfect_percent = 100. * results.count_frames(
+                results.CORRECT_NAME_FILTER) / results.count_frames()
             print("Name\t\t%6.2f%%\t%6.2f%%" %
                   (name_partial_percent, name_perfect_percent))
         except (IndexError,         # Caused by no results
@@ -473,23 +465,23 @@ def test(src, VIDEO_WINDOW = VIDEO_WINDOW, LOGGING_LEVEL = LOGGING_LEVEL):
                 ):
             print("Name\t\tN/A\t\tN/A")
         try:
-            time_partial_percent = average(
-                filter(not_none, zip(*read_time_results)[1])) * 100
-            time_perfect_percent = average(
-                filter(not_none, zip(*read_time_results)[2])) * 100
+            time_partial_percent = results.percent_partial_time_matches()
+            time_perfect_percent = 100. * results.count_frames(
+                results.CORRECT_TIME_FILTER) / results.count_frames()
             print("Time\t\t%6.2f%%\t%6.2f%%" %
                   (time_partial_percent, time_perfect_percent))
         except (IndexError,         # Caused by no results
                 ZeroDivisionError   # Caused by "None" results.
                 ):
             print("Time\t\tN/A\t\tN/A")
-        print("Processed Frames: %d" % len(exc_time_results))
-        print("Failed Frames: %d" % failed_frames)
-        if exc_time_results:
-            print(" Average Time:\t%.3f seconds" % average(exc_time_results))
+        print("Processed Frames: %d" % results.count_frames())
+        print("Failed Frames: %d" % results.count_frames(results.FAILED_FILTER))
+        if results.count_frames():
+            print(" Average Time:\t%.3f seconds" % results.average_time())
         else:
             print(" Average Time:\tN/A seconds")
-        print("   Total Time:\t%.3f seconds" % exc_time)
+        results.total_time = exc_time
+        print("   Total Time:\t%.3f seconds" % results.total_time)
 
 def main(args = None, VIDEO_WINDOW=VIDEO_WINDOW,LOGGING_LEVEL=LOGGING_LEVEL):
     # Get test Information
