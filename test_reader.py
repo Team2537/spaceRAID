@@ -40,7 +40,7 @@ __version__ = "0.5"
 
 __all__ = ["VERBOSE", "TRANSCRIPT_FILE", "main"]
 
-VERBOSE = 4 # EDIT HOW MUCH IS PRINTED
+VERBOSE = 7 # EDIT HOW MUCH IS PRINTED
 
 # input, basestring, and long for python 2.X and 3.X
 try:
@@ -310,25 +310,25 @@ class Result_Handler():
         # else
         return len(self._get_set(lambda x: True, function))
 
-##    #-----------------------------------------------------------------
-##    # Do we need this functions? I think not.
-##    def count_failed_frames(self):
-##        """Count the number of frames that failed to return values."""
-##        return self.count_frames(self.FAILED_FILTER)
-##
-##    def count_correct_frames(self):
-##        """Count the number of frames that  were correctly read."""
-##        return self.count_frames(self.CORRECT_FILTER)
-##    
-##    def count_correct_name_frames(self):
-##        """Count the number of frames that were correct."""
-##        return self.count_frames(CORRECT_NAME_FILTER)
-##    
-##    def count_correct_time_frames(self):
-##        """Count the number of name frames that were correct."""
-##        return self.count_frames(CORRECT_TIME_FILTER)
-##    # I mean, they are all one line redirects.
-##    #----------------------------------------------------------------
+    #-----------------------------------------------------------------
+    # Do we need this functions? I think not.
+    def count_failed_frames(self):
+        """Count the number of frames that failed to return values."""
+        return self.count_frames(self.FAILED_FILTER)
+
+    def count_correct_frames(self):
+        """Count the number of frames that  were correctly read."""
+        return self.count_frames(self.CORRECT_FILTER)
+    
+    def count_correct_name_frames(self):
+        """Count the number of frames that were correct."""
+        return self.count_frames(CORRECT_NAME_FILTER)
+    
+    def count_correct_time_frames(self):
+        """Count the number of name frames that were correct."""
+        return self.count_frames(CORRECT_TIME_FILTER)
+    # I mean, they are all one line redirects.
+    #----------------------------------------------------------------
     
     def percent_partial_name_matches(self, function = None):
         """The average simliarity of a name result to its real answer."""
@@ -346,12 +346,18 @@ class Result_Handler():
 
     # total_time is an attribute
     
-    def average_time(self, function = None):
+    def average_time(self, function = None, raise_error = False):
         """The average time for each frame to be processed.
            A filter can be specified to restrict the set the average is taken
            from.
         """
-        return average(self._get_set(lambda x:x.duration, function))
+        if raise_error:
+            return average(self._get_set(lambda x:x.duration, function))
+        # else
+        try:
+            return average(self._get_set(lambda x:x.duration, function))
+        except ZeroDivisionError:
+            return None
 
 def test(src, VIDEO_WINDOW = VIDEO_WINDOW, LOGGING_LEVEL = LOGGING_LEVEL):
     """Test the process frames."""
@@ -569,16 +575,14 @@ def main(args = None, VIDEO_WINDOW=VIDEO_WINDOW,LOGGING_LEVEL=LOGGING_LEVEL):
     elif test_set == 2:
         # "All" Set.
         src = Image_Transcript(
-                os.path.join(basename, "./Examples/All"),
-                "image%d.png",
+                os.path.join(basename, "./Examples/All"), "image%d.png",
                 os.path.join(basename, "./Examples/All/textInImages.txt")
                 )
 
     elif test_set == 3:
         # "Every5" Set.
         src = Image_Transcript(
-                os.path.join(basename, "./Examples/Every5Sec"),
-                "image%d.jpg",
+                os.path.join(basename, "./Examples/Every5Sec"), "image%d.jpg",
                 os.path.join(basename, "./Examples/Every5Sec/textInImages.txt")
                 )
 

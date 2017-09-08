@@ -70,7 +70,7 @@ if cv2:
         __all__ = ['close', 'closed',   'get_fps',          'get_frame',
                    'get_frame_index',   'get_frame_height', 'get_frame_width',
                    'get_progress',      'get_timestamp',    'name', 'path',
-                   'set_frame_index',   'set_progress',     'set_timestamp'
+                   'set_frame_index',   'set_progress',     'set_timestamp',
                    'get_frame_count']
         def __init__(self, source):
             self.path = os.path.normpath(source)

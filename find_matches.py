@@ -1,4 +1,5 @@
 """Takes the video feed and looks for signs that a match is there."""
+import sys
 import math
 import logging
 import video_loader
@@ -84,3 +85,35 @@ def read_moment(video, frame_count = None):
         return common
     # Otherwise, this fails.
     return None, None
+
+def read_video(video):
+    """Analyze and find the matches in a video."""
+    # Set up the video stream.
+    video.set_timestamp(0)
+
+    # Run Moment every 60 seconds.
+    timestamp = video.get_timestamp()
+    video_length = video.get_frame_count() * video.get_fps()
+    newline = True
+    while timestamp < video_length:
+        name, time = read_moment(video)
+
+        if name is not '' or time is not '':
+            # If anything.
+            if not newline:
+                print("")
+            print("Read timestamp %8.2f to be %r." % (timestamp, (name, time)))
+            newline = True
+        else:
+            sys.stdout.write('.')
+            sys.stdout.flush()
+            newline = False
+
+        timestamp += 60 * 1000 * 2
+
+        video.set_timestamp(timestamp)
+
+if __name__ == '__main__':
+    process_frames.init()
+    video = video_loader.Video("./Examples/Saturday 3-11-17_ND.mp4")
+    read_video(video)
