@@ -4,19 +4,27 @@ Use a video library to get, edit, and save video.
 The api for this library is as follows.
 
 Video(source)
-    
+
 """
 __author__ = "Matthew Schweiss"
 __version__ = "0.5"
 # TODO
 # Add the meanings of various return codes.
 # Implement complete ffmpeg support.
-__all__ = ["Video", "load_image", "save_image"]
+__all__ = ["Video", "load_image", "save_image", "show_image", "close_image"]
 
 import os
 import logging
 import warnings
 # Get whatever library is avalible.
+
+try:
+    basestring
+except NameError:
+    try:
+        basestring = (str, unicode)
+    except NameError:
+        basestring = str
 
 # Build first for ffmpeg. Then, if that fails. Build for cv2.
 # For now, I know how to make cv2 work, so load that.
@@ -32,7 +40,7 @@ else:
         import ffmpeg
     except ImportError:
         ffmpeg = None
-    
+
 if cv2:
     def load_image(path):
         """Load the image from file."""
@@ -62,8 +70,19 @@ if cv2:
             msg = "Error displaying images. cv2.error when running in terminal."
             logging.error(msg)
             warnings.warn(RuntimeWarning(msg), stacklevel = 2)
-            
-    
+
+    def close_image(image = None):
+        """Closes windows with images in them."""
+        if image is None:
+            cv2.destroyAllWindows()
+        # If image is a string, destroy window with that name.
+        elif isinstance(image, basestring):
+            cv2.destroyWindow(image)
+        else:
+            # Was not string
+            raise RuntimeError("Image must be the name of a window displaying"
+                               " or None, not %r." % image)
+
     class Video():
         """A wrapper class for cv2 and ffmpeg of video processing."""
 
@@ -170,7 +189,7 @@ if cv2:
         cv2.CAP_PROP_CONVERT_RGB    #Boolean flags indicating whether images should be converted to RGB.
         cv2.CAP_PROP_FORMAT         #Format of the Mat objects returned by retrieve().
 
-        
+
         cv2.CAP_PROP_MODE           #Backend-specific value indicating the current capture mode.
         # Camera settings only.
         cv2.CAP_PROP_BRIGHTNESS     #Brightness of the image (only for cameras).
@@ -189,11 +208,18 @@ if cv2:
         cv2.CAP_PROP_BUFFERSIZE     #Amount of frames stored in internal buffer memory (note: only supported by DC1394 v 2.x backend currently)
 
         def get_frame(self):
-            """Read the next line from the file."""
+            """Read the next frame."""
             ret, frame = self.cap.read()
             if ret:
                 return frame
             return None
+
+        def grab_frame(self):
+            """Read the next frame but don't advance."""
+            ret, frame = self.cap.retrieve()
+            if ret is False:
+                raise RuntimeError("No frame to return.")
+            return frame
 
         def closed(self):
             """Return if the video file is closed."""
@@ -204,6 +230,7 @@ if cv2:
             self.cap.release()
 
     def test():
+        global video
         video = Video('Examples/Saturday 3-11-17_ND.mp4')
         print("Width: %s\tHeight:\t%s" % (video.get_frame_width(),
                                           video.get_frame_height()))
@@ -216,14 +243,17 @@ if cv2:
                     cv2.imshow('Video', frame)
                 else:
                     break
-                    
+
                 if cv2.waitKey(1) & 0xFF == ord('q'):
                      break
+
+        except KeyboardInterrupt:
+            print("KeyboardInterrupt")
         finally:
             video.close()
             cv2.destroyAllWindows()
-            
-else: # elif ffmpeg:    
+
+else: # elif ffmpeg:
     # For ffmpeg compatability it should be possible to use the code found at
     # https://github.com/Zulko/moviepy/blob/master/moviepy/video/io/ffmpeg_reader.py
     # https://github.com/dschreij/opensesame-plugin-media_player_mpy/

@@ -366,7 +366,7 @@ def read_image(image):#, debug = False):
     # Log the initial reading and conversion.
     # INFO:root:Name Read: 'Qualmution 5 M 78\n\n'   -> 'Qualification 5 of 78'.
     # INFO:root:Time Read: '13 \n\n' (' 3 \n\n')     -> '13'.
-    logging.info("Name Read: %-28r"      " -> %r." % (name_raw, name))
-    logging.info("Time Read: %-13r (%-12r) -> %r." % (time_raw, time_ext, time))
+    logging.info("Name Read: %-28r"      " -> %r" % (name_raw, name))
+    logging.info("Time Read: %-13r (%-12r) -> %r" % (time_raw, time_ext, time))
 
     return name, time

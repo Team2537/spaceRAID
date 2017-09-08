@@ -1,11 +1,14 @@
+#!/usr/bin/env python
 """Takes the video feed and looks for signs that a match is there."""
 import sys
 import math
 import logging
+
 import video_loader
 import process_frames
 
-from collections import Counter # Counts frequency of 
+from collections   import Counter # Counts frequency of
+from terminalsize import get_terminal_size
 
 MATCH_LENGTH = 188 # seconds (can be different with weird matches)
 
@@ -55,7 +58,7 @@ def read_moment(video, frame_count = None):
             logging.error("frame is None")
             continue
         name, time = process_frames.read_image(frame)
-        
+
         # Add another frame if this one failed.
         # But if we have reached max frames, do nothing.
         if (name is None or time is None) and len(frames) < MOMENT_MAXIMUM_FRAMES:
@@ -86,6 +89,8 @@ def read_moment(video, frame_count = None):
     # Otherwise, this fails.
     return None, None
 
+VERBOSE = 2
+
 def read_video(video):
     """Analyze and find the matches in a video."""
     # Set up the video stream.
@@ -94,26 +99,46 @@ def read_video(video):
     # Run Moment every 60 seconds.
     timestamp = video.get_timestamp()
     video_length = video.get_frame_count() * video.get_fps()
-    newline = True
+    blank_count = 0
     while timestamp < video_length:
+        video_loader.show_image(video.grab_frame())
         name, time = read_moment(video)
-
+        
         if name is not '' or time is not '':
             # If anything.
-            if not newline:
+            if blank_count:
                 print("")
-            print("Read timestamp %8.2f to be %r." % (timestamp, (name, time)))
-            newline = True
+            print("Read timestamp %8.2f to be %r" % (timestamp, (name, time)))
+            blank_count = 0
         else:
-            sys.stdout.write('.')
-            sys.stdout.flush()
-            newline = False
+            blank_count += 1
+            if VERBOSE == 1:
+                sys.stdout.write('.')
+                sys.stdout.flush()
+            elif VERBOSE == 2:
+                terminal_width = get_terminal_size()[0]
+                if blank_count > terminal_width:
+                    # Bar would be longer than the terminal.
+                    # Print newline, scrollback counter and continue!
+                    print("")
+                    blank_count -= terminal_width
+                    
+                sys.stdout.write('.' * blank_count + "\r")
+                sys.stdout.flush()
 
-        timestamp += 60 * 1000 * 2
+        timestamp += MATCH_LENGTH / 3 * 1000 # We want at least two frames per
+                                             # match. This means we need three
+                                             # chances.
 
         video.set_timestamp(timestamp)
 
 if __name__ == '__main__':
+    logging.getLogger().setLevel(logging.DEBUG)
     process_frames.init()
     video = video_loader.Video("./Examples/Saturday 3-11-17_ND.mp4")
-    read_video(video)
+    try:
+        read_video(video)
+    except KeyboardInterrupt:
+        print("KeyboardInterrupt")
+    finally:
+        video_loader.close_image()
