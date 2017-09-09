@@ -90,6 +90,7 @@ def read_moment(video, frame_count = None):
     return None, None
 
 VERBOSE = 2
+SHOW_VISUAL = False
 
 def read_video(video):
     """Analyze and find the matches in a video."""
@@ -101,7 +102,8 @@ def read_video(video):
     video_length = video.get_frame_count() * video.get_fps()
     blank_count = 0
     while timestamp < video_length:
-        video_loader.show_image(video.grab_frame())
+        if SHOW_VISUAL:
+            video_loader.show_image(video.grab_frame())
         name, time = read_moment(video)
         
         if name is not '' or time is not '':
