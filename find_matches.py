@@ -24,8 +24,8 @@ MATCH_LENGTH = 188 # seconds (can be different with weird matches)
 # Also, I need to have some kind of resource pool to allow for accelerated
 # reading.
 
-MOMENT_MINIMUM_FRAMES = 2 # Least number of identical frames needed to believe a result.
-MOMENT_MAXIMUM_FRAMES = 5 # Most number of frames needed to use majority vote.
+MOMENT_MINIMUM_FRAMES = 5 # Least number of identical frames needed to believe a result.
+MOMENT_MAXIMUM_FRAMES = 9 # Most number of frames needed to use majority vote.
 MOMENT_IDENTICAL_PERCENTAGE = 4./5 # Percentage required of identical frames.
 
 def read_moment(video, frame_count = None):
@@ -90,7 +90,7 @@ def read_moment(video, frame_count = None):
     return None, None
 
 VERBOSE = 2
-SHOW_VISUAL = False
+SHOW_VISUAL = True
 
 def read_video(video):
     """Analyze and find the matches in a video."""
@@ -101,38 +101,55 @@ def read_video(video):
     timestamp = video.get_timestamp()
     video_length = video.get_frame_count() * video.get_fps()
     blank_count = 0
-    while timestamp < video_length:
-        if SHOW_VISUAL:
-            video_loader.show_image(video.grab_frame())
-        name, time = read_moment(video)
-        
-        if name is not '' or time is not '':
-            # If anything.
-            if blank_count:
-                print("")
-            print("Read timestamp %8.2f to be %r" % (timestamp, (name, time)))
-            blank_count = 0
-        else:
-            blank_count += 1
-            if VERBOSE == 1:
-                sys.stdout.write('.')
-                sys.stdout.flush()
-            elif VERBOSE == 2:
-                terminal_width = get_terminal_size()[0]
-                if blank_count > terminal_width:
-                    # Bar would be longer than the terminal.
-                    # Print newline, scrollback counter and continue!
+
+    # Memory Structure
+    match_data = {}
+    try:
+        while timestamp < video_length:
+            if SHOW_VISUAL:
+                video_loader.show_image(video.grab_frame())
+            name, time = read_moment(video)
+            if name in match_data:
+                match_data[name].append((timestamp, name, time))
+            else:
+                match_data[name] = [(timestamp, name, time)]
+            if name is not '' or time is not '':
+                # If anything.
+                if blank_count:
                     print("")
-                    blank_count -= terminal_width
-                    
-                sys.stdout.write('.' * blank_count + "\r")
-                sys.stdout.flush()
+                print("Read timestamp %8.2f to be %r" % (timestamp, (name, time)))
+                blank_count = 0
+            else:
+                blank_count += 1
+                if VERBOSE == 1:
+                    sys.stdout.write('.')
+                    sys.stdout.flush()
+                elif VERBOSE == 2:
+                    terminal_width = get_terminal_size()[0]
+                    if blank_count > terminal_width:
+                        # Bar would be longer than the terminal.
+                        # Print newline, scrollback counter and continue!
+                        print("")
+                        blank_count -= terminal_width
+                        
+                    sys.stdout.write('.' * blank_count + "\r")
+                    sys.stdout.flush()
 
-        timestamp += MATCH_LENGTH / 3 * 1000 # We want at least two frames per
-                                             # match. This means we need three
-                                             # chances.
+            timestamp += MATCH_LENGTH / 3 * 1000 # We want at least two frames per
+                                                 # match. This means we need three
+                                                 # chances.
 
-        video.set_timestamp(timestamp)
+            video.set_timestamp(timestamp)
+    finally:
+        if blank_count:
+            print("")
+            blank_count = 0
+        # Print some data about what was returned.
+        for m in sorted(match_data):
+            print("Match: %r" % m)
+        print("Found %d matches." % len(match_data))
+
+    return match_data
 
 if __name__ == '__main__':
     logging.getLogger().setLevel(logging.DEBUG)

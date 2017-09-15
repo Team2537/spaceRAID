@@ -51,7 +51,10 @@ ALLOW_FAILURE = True
 NAME_FORMATS = (    "",                           "Test Match",
                     "Qualification # of #",       "Quarterfinal # of #",
                     "QuarterFinal Tiebreaker #",  "Semifinal #",
-                    "Semifinal # of #",           "Final #")
+                    "Semifinal # of #",           "Final #",
+                    "Practice # of #")
+
+NAME_CHAR_LIST = "".join(sorted(set("".join(NAME_FORMATS)).difference("#")))
 
 NUMBER_CORRENTIONS = {
     # This is a list of non-number letters and numbers that are
@@ -88,7 +91,7 @@ def name_reader():
 ##    char_list = ''.join(sorted(char_list))
     # For test, trying a static list that intentially does not have all
     # letters.
-    char_list = " 0123456789MPQTacefhilmnopqstuy"
+    char_list = " 0123456789MPQTacefhilmnopqrstuy"
 
     image = yield None
     # Call the tesseract library and build the processing object ("ocr").
@@ -134,7 +137,11 @@ def smart_read_name(name_text):
     # Take the reg_name, put # in for numbers for compare.
     reg_name_template, n = re.subn("\\d+", "#", match_name)
     
-    match = difflib.get_close_matches(reg_name_template, NAME_FORMATS, 1)
+    match = difflib.get_close_matches(reg_name_template, NAME_FORMATS,
+                                      n = 1, # At most only one result.
+##                                      cutoff =.4
+##                                      #Particularly Practice needs this.
+                                      )
     del reg_name_template
     if not match:
         return "" # We are done here.
@@ -230,7 +237,7 @@ def smart_read_time(reg_time, ext_time):
         return None
     else:
         return ""
-
+    
 # Now threading.
 # For threading, I need to make a pool of workers to process frames and pass
 # them back to the correct functions.
