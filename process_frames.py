@@ -74,9 +74,23 @@ def similar(a, b):
     # This is built into python. Python is Great!!!
     return difflib.SequenceMatcher(None, a, b).ratio()
 
-def enlarge(image, ratio):
+def enlarge(image, ratio, interpolation = None):
     """Take the image and increase the size by ratio."""
-    return cv2.resize(src = image, dsize = (0,0), fx = ratio, fy = ratio)
+    # INTER_LINEAR is the default setting.
+    # Valid settings are:
+    # cv2.INTER_NEAREST - a nearest-neighbor interpolation
+    # cv2.INTER_LINEAR - a bilinear interpolation (used by default)
+    # cv2.INTER_AREA - resampling using pixel area relation. It may be a
+    #                  preferred method for image decimation, as it gives
+    #                  moire'-free results. But when the image is zoomed, it
+    #                  is similar to the INTER_NEAREST method.
+    # cv2.INTER_CUBIC - a bicubic interpolation over 4x4 pixel neighborhood
+    # cv2.INTER_LANCZOS4 - a Lanczos interpolation over 8x8 pixel neighborhood
+    if interpolation is None:
+        return cv2.resize(src = image, dsize = (0,0), fx = ratio, fy = ratio)
+    # else
+    return cv2.resize(src = image, dsize = (0,0), fx = ratio, fy = ratio,
+                      interpolation = interpolation)
 
 def name_reader():
     """Read all of the images as they get introduced to the generater."""

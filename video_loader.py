@@ -55,6 +55,9 @@ if cv2:
 
     def show_image(image, title = "Video"):
         """Display an image on the screen if possible."""
+        # First, make sure image is not None
+        if image is None:
+            raise TypeError("Image must be a cv2 image, not None")
         try:
             cv2.imshow(title, image)
 

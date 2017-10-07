@@ -92,8 +92,8 @@ def read_moment(video, frame_count = None):
 VERBOSE = 2
 SHOW_VISUAL = True
 
-def read_video(video):
-    """Analyze and find the matches in a video."""
+def scan_video(video):
+    """Complete an inital scan of the video, trying to find all matches."""
     # Set up the video stream.
     video.set_timestamp(0)
 
@@ -109,15 +109,12 @@ def read_video(video):
             if SHOW_VISUAL:
                 video_loader.show_image(video.grab_frame())
             name, time = read_moment(video)
-            if name in match_data:
-                match_data[name].append((timestamp, name, time))
-            else:
-                match_data[name] = [(timestamp, name, time)]
+            match_data[timestamp] = name, time
             if name is not '' or time is not '':
                 # If anything.
                 if blank_count:
                     print("")
-                print("Read timestamp %8.2f to be %r" % (timestamp, (name, time)))
+                print("Read timestamp %8.2f to be %r" %(timestamp,(name,time)))
                 blank_count = 0
             else:
                 blank_count += 1
@@ -151,13 +148,24 @@ def read_video(video):
 
     return match_data
 
-if __name__ == '__main__':
+def check_video(results):
+    """Take the dictionary built from video scanner and use it to
+       find holes. Returns a list of missing matches, a calculated
+       number of list of matches.
+    """
+    # Step #1, divide up the different match types.
+
+def main(args = None):
+    global video
     logging.getLogger().setLevel(logging.DEBUG)
     process_frames.init()
     video = video_loader.Video("./Examples/Saturday 3-11-17_ND.mp4")
     try:
-        read_video(video)
+        return scan_video(video)
     except KeyboardInterrupt:
         print("KeyboardInterrupt")
     finally:
         video_loader.close_image()
+
+if __name__ == '__main__':
+    results = main()
