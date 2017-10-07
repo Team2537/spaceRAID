@@ -2,6 +2,7 @@
 """Takes the video feed and looks for signs that a match is there."""
 import sys
 import math
+import queue
 import logging
 
 import video_loader
@@ -9,6 +10,8 @@ import process_frames
 
 from collections   import Counter # Counts frequency of
 from terminalsize import get_terminal_size
+
+MATCH_PREROLL = 20 # seconds
 
 MATCH_LENGTH = 188 # seconds (can be different with weird matches)
 
@@ -27,6 +30,35 @@ MATCH_LENGTH = 188 # seconds (can be different with weird matches)
 MOMENT_MINIMUM_FRAMES = 5 # Least number of identical frames needed to believe a result.
 MOMENT_MAXIMUM_FRAMES = 9 # Most number of frames needed to use majority vote.
 MOMENT_IDENTICAL_PERCENTAGE = 4./5 # Percentage required of identical frames.
+
+##class Video_Data():
+##    """Handle the evaluation of data as the video is processed.
+##       This gives a simple valuation of how to analyze the video,
+##       with the results calculated on the fly.
+##    """
+##    def __init__(self, video):
+##        """Create a new Video_Data class."""
+##        self.video = video
+##
+##        self.video_data = {}
+##
+##        self.processing_queue = queue.PriorityQueue()
+##
+##        self.worker_threads = []
+
+# https://stackoverflow.com/questions/89178/
+# in-python-what-is-the-fastest-algorithm-for-removing-duplicates-from-a-list-so
+def unique(items):
+    """Preserve the order and remove all but the first occurance."""
+    found = set([])
+    keep = []
+
+    for item in items:
+        if item not in found:
+            found.add(item)
+            keep.append(item)
+
+    return keep
 
 def read_moment(video, frame_count = None):
     """Read text at the frame number (frames from start of video).
@@ -128,7 +160,7 @@ def scan_video(video):
                         # Print newline, scrollback counter and continue!
                         print("")
                         blank_count -= terminal_width
-                        
+
                     sys.stdout.write('.' * blank_count + "\r")
                     sys.stdout.flush()
 
@@ -142,30 +174,60 @@ def scan_video(video):
             print("")
             blank_count = 0
         # Print some data about what was returned.
-        for m in sorted(match_data):
-            print("Match: %r" % m)
         print("Found %d matches." % len(match_data))
 
     return match_data
 
-def check_video(results):
+def time_video(results):
     """Take the dictionary built from video scanner and use it to
        find holes. Returns a list of missing matches, a calculated
        number of list of matches.
     """
-    # Step #1, divide up the different match types.
+    final_times = []
+    # First, get a list of all found matches.
+    match_names = unique(match[0] for match in results.values())
+
+    # Then for each one, guess the start timestamp, and the end timestamp.
+    for match_name in match_names:
+        if not match_name:
+            continue
+
+        matches = [(timestamp, name, time)
+                   for timestamp, (name, time) in results.items()
+                   if name == match_name and time]
+
+        if not matches:
+            print("Match %s had no usable frames." % match_name)
+            continue
+
+        # Alright, for each of these matches, find an average slope between each
+        # frame.
+        start_time = sum(timestamp - int(time) * 1000
+                         for timestamp, name, time in matches) \
+                         * 1./ len(matches) - MATCH_PREROLL
+
+        stop_time = start_time + MATCH_PREROLL + MATCH_LENGTH
+
+        final_times.append((match_name, start_time, stop_time))
+
+        print("% 24s starts at % 8d and finishes at % 8d." %
+              (match_name, start_time, stop_time))
+
+    return final_times
+
 
 def main(args = None):
-    global video
+    global video, results
     logging.getLogger().setLevel(logging.DEBUG)
     process_frames.init()
     video = video_loader.Video("./Examples/Saturday 3-11-17_ND.mp4")
     try:
-        return scan_video(video)
+        results = scan_video(video)
+        return time_video(results)
     except KeyboardInterrupt:
         print("KeyboardInterrupt")
     finally:
         video_loader.close_image()
 
 if __name__ == '__main__':
-    results = main()
+    timings = main()
