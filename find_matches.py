@@ -1,9 +1,13 @@
 #!/usr/bin/env python
 """Takes the video feed and looks for signs that a match is there."""
+import ffmpeg
+
+import os
 import sys
 import math
 import queue
 import logging
+import subprocess
 
 import video_loader
 import process_frames
@@ -202,11 +206,11 @@ def time_video(results):
 
         # Alright, for each of these matches, find an average slope between each
         # frame.
-        start_time = sum(timestamp - int(time) * 1000
+        start_time = sum(timestamp / 1000. - int(time)
                          for timestamp, name, time in matches) \
-                         * 1./ len(matches) - MATCH_PREROLL
+                         / len(matches) - MATCH_PREROLL
 
-        stop_time = start_time + MATCH_PREROLL + MATCH_LENGTH
+        stop_time = start_time + MATCH_PREROLL + MATCH_LENGTH 
 
         final_times.append((match_name, start_time, stop_time))
 
@@ -214,8 +218,47 @@ def time_video(results):
               (match_name, start_time, stop_time))
 
     return final_times
-
-
+import time
+def write_files(video, timings):
+    """Write the videos that are found in the output."""
+    output_folder = "./Examples/" + video.name.strip(".mp4")
+    if not os.path.exists(output_folder):
+        os.mkdir(output_folder)
+    # ffmpeg -i source-file.foo -ss 1200 -t 600 third-10-min.m4v
+    # ffmpeg_command = 'ffmpeg -i %r -ss %r -t %r %r'
+    def ffmpeg_command(source, start_time, stop_time, output):
+        return ['/usr/local/Cellar/ffmpeg/3.3.4/bin/ffmpeg',
+                '-ss', str(start_time),
+                '-i', source,
+                '-t', str(stop_time - start_time),
+                output]
+    for match_name, start_time, stop_time in timings:
+        output_file = os.path.join(output_folder, match_name + ".mp4")
+        if os.path.exists(output_file):
+            continue
+        print("Make file %s" % output_file)
+        command = ffmpeg_command(video.path,start_time,stop_time,output_file)
+        print("Command: %s" % command)
+        output = subprocess.Popen(command,
+                                  stdout = subprocess.PIPE,
+                                  stderr = subprocess.STDOUT)
+        while output.poll() is None:
+            output.stdout.flush()
+            x = output.stdout.readline()
+            if x:
+                print(x.rstrip("\n"))
+            time.sleep(.1)
+        ##print("Finished with status %s" % output.wait())
+##        input = ffmpeg.input(video.path)
+##        input = input.trim(
+##            start = start_time * 1. / 1000, end = stop_time * 1. / 1000)
+##        
+##        output_file = os.path.join(output_folder, match_name + ".mp4")
+##        output = input.output(output_file)
+##
+##        print("Make file %s" % output_file)
+##        output.run()
+    
 def main(args = None):
     global video, results
     logging.getLogger().setLevel(logging.DEBUG)
@@ -223,11 +266,12 @@ def main(args = None):
     video = video_loader.Video("./Examples/Saturday 3-11-17_ND.mp4")
     try:
         results = scan_video(video)
-        return time_video(results)
+        timings = time_video(results)
+        write_files(video, timings)
     except KeyboardInterrupt:
         print("KeyboardInterrupt")
     finally:
         video_loader.close_image()
 
 if __name__ == '__main__':
-    timings = main()
+    timings = main()#208
