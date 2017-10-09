@@ -371,8 +371,14 @@ def read_image(image):#, debug = False):
         # Enlarge the frames and to the extraction.
         time_image     = Image.fromarray(
             enlarge(time_frame,               REG_TIME_ENLARGE))
-        time_ext_image = Image.fromarray(
-            enlarge(extract_image(time_frame),EXT_TIME_ENLARGE))
+        try:
+            time_ext_image = Image.fromarray(
+                enlarge(extract_image(time_frame),EXT_TIME_ENLARGE))
+        except TypeError:
+            # Rarely, this can fail when there are no contour lines found.
+            # The extracted just should be the same.
+            logging.error("Image Extraction failed with error %r." % sys.exc_value)
+            time_ext_image = time_image
 
         read_time = TIME_POOL.get()
         # Remove unicode if present.

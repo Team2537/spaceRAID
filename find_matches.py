@@ -15,9 +15,9 @@ import process_frames
 from collections   import Counter # Counts frequency of
 from terminalsize import get_terminal_size
 
-MATCH_PREROLL = 20 # seconds
+MATCH_PREROLL = 20 + 40 # seconds
 
-MATCH_LENGTH = 188 # seconds (can be different with weird matches)
+MATCH_LENGTH = 188 + 35 + 20 # seconds (can be different with weird matches)
 
 # So, we now have a function that can take an image and read it.
 # What we really need is a function that takes a movie and a time.
@@ -246,7 +246,7 @@ def write_files(video, timings):
             output.stdout.flush()
             x = output.stdout.readline()
             if x:
-                print(x.rstrip("\n"))
+                logging.debug("ffmepg %s" % x.rstrip("\n"))
             time.sleep(.1)
         ##print("Finished with status %s" % output.wait())
 ##        input = ffmpeg.input(video.path)
@@ -259,11 +259,11 @@ def write_files(video, timings):
 ##        print("Make file %s" % output_file)
 ##        output.run()
     
-def main(args = None):
-    global video, results
+def main(args):
+    global video, results, timings
     logging.getLogger().setLevel(logging.DEBUG)
     process_frames.init()
-    video = video_loader.Video("./Examples/Saturday 3-11-17_ND.mp4")
+    video = video_loader.Video(args[0])
     try:
         results = scan_video(video)
         timings = time_video(results)
@@ -274,4 +274,6 @@ def main(args = None):
         video_loader.close_image()
 
 if __name__ == '__main__':
-    timings = main()#208
+##    main(["./Examples/Friday 4-7-17_ND.mp4"])
+##    main(["./Examples/Saturday 4-8-17_ND.mp4"])
+    main(["./Examples/Thursday 4-6-17_ND.mp4"])
