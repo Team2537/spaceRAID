@@ -38,7 +38,7 @@ __all__ = ["read_image", "ALLOW_FAILURE", "VERBOSE", "REG_NAME_ENLARGE",
            "REG_TIME_ENLARGE", "EXT_TIME_ENLARGE", "ADAPTIVE_CLASSIFIER"]
 
 __author__ = "Matthew Schweiss"
-__version__ = "0.5"
+__version__ = "0.9"
 
 REG_NAME_ENLARGE = 5
 REG_TIME_ENLARGE = 20
@@ -62,7 +62,9 @@ NUMBER_CORRENTIONS = {
     "s" : "5",
     "S" : "5",
     "1a": "78", # Evidently a mistake the system will make
-    
+    "lo": "80",
+    "l0": "80",
+    "no": "80",
     }
 
 def is_numpy_image(image):
