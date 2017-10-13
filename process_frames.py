@@ -17,6 +17,8 @@ import cv2
 import sys
 import difflib
 import logging # I will get to adding this eventually.
+from collections import namedtuple
+
 import tesserocr
 from PIL import Image
 from numpy import ndarray
@@ -38,7 +40,7 @@ __all__ = ["read_image", "ALLOW_FAILURE", "VERBOSE", "REG_NAME_ENLARGE",
            "REG_TIME_ENLARGE", "EXT_TIME_ENLARGE", "ADAPTIVE_CLASSIFIER"]
 
 __author__ = "Matthew Schweiss"
-__version__ = "0.9"
+__version__ = "1"
 
 REG_NAME_ENLARGE = 5
 REG_TIME_ENLARGE = 20
@@ -48,20 +50,27 @@ ADAPTIVE_CLASSIFIER = True
 ALLOW_FAILURE = True
 
 # Basically, try to convert everything to one of these formats.
-NAME_FORMATS = (    "",                           "Test Match",
-                    "Qualification # of #",       "Quarterfinal # of #",
-                    "QuarterFinal Tiebreaker #",  "Semifinal #",
-                    "Semifinal # of #",           "Final #",
-                    "Practice # of #")
+NAME_FORMATS = {
+    ""                          :   "",
+    "Test Match"                :   't',
+    "Qualification # of #"      :   'q',
+    "Quarterfinal # of #"       :   'qf',
+    "QuarterFinal Tiebreaker #" :   'qft',
+    "Semifinal #"               :   'sfn',
+    "Semifinal # of #"          :   'sf',
+    "Final #"                   :   'f',
+    "Practice # of #"           :   'p',
+    }
 
 NAME_CHAR_LIST = "".join(sorted(set("".join(NAME_FORMATS)).difference("#")))
 
-NUMBER_CORRENTIONS = {
+NUMBER_CORRECTIONS = {
     # This is a list of non-number letters and numbers that are
     # sometimes accidently encoded as them.
     "s" : "5",
     "S" : "5",
     "1a": "78", # Evidently a mistake the system will make
+    "00": "80",
     "lo": "80",
     "l0": "80",
     "no": "80",
@@ -143,71 +152,220 @@ def time_reader():
                 ocr.ClearAdaptiveClassifier()
             # Turns out this optimization does help time readings a lot!
             # From a 68.73% perfect read to a 75.45%!
-       
+
+class Name_Result(object):
+    """Name_Result(match_type, match_number, total_matches, time)"""
+    # Match Abbrevation which is the reverse of NAME_FORMATS.
+    MATCH_ABBR_FORMATS = dict((item, key) for key, item in NAME_FORMATS.items())
+
+    # Using __slots__ and __new__ to speed this up a little.
+    __slots__ = ('match_type', 'match_number', 'total_matches')
+
+    def __new__(cls, match_type, match_number, total_matches):
+        """Create new instance of Name_Results(match_type, match_number, total_matches)"""
+        self                = object.__new__(cls)
+        # See if the match_type is a match name, or an abbreviation.
+        if match_type in self.MATCH_ABBR_FORMATS:
+            self.match_type = match_type
+        elif match_type in NAME_FORMATS:
+            self.match_type = NAME_FORMATS[match_type]
+        else:
+            raise ValueError("match_type is not in NAME_FORMATS.")
+        # Now the other varibles: match_number, total_matches, and match time.
+        # None, is allowed for all values.
+        self.match_number   = int(match_number) if match_number is not None else None
+        self.total_matches  = int(total_matches)if total_matches is not None else None
+        return self
+
+##    @classmethod
+##    def from_name(cls, name):
+##        """Build a Name_Result from the given name and time."""
+##        if name is None:
+##            return cls(None, None, None)
+##        # else
+##        if name == "":
+##            # Blank
+##            pass
+
+    def __bool__(self):
+        """If this is object exists."""
+        return self.match_type is not ""
+
+    __nonzero__ = __bool__
+
+    def __str__(self):
+        """Print string representation of the object."""
+        if not self:
+            return "None"
+        match_name = self.MATCH_ABBR_FORMATS[self.match_type]
+        # Add Match Number
+        if "#" in match_name:
+            match_name = match_name.replace("#", str(self.match_number), 1)
+        # Add Match Quantity
+        if "#" in match_name:
+            match_name = match_name.replace("#", str(self.total_matches), 1)
+        return match_name
+
+    def __repr__(self):
+       """Return a nicely formatted representation string"""
+       return('Name_Result(match_type=%r, match_number=%r, total_matches=%r)'
+              % (self.match_type, self.match_number, self.total_matches))
+
+##def smart_read_name(name_text):
+##    """Post Process the name text."""
+##    # Make name, special.
+##    #name = Reading_Result.from_name(name)
+##    # First clean reg_name a little bit.
+##    name_text = name_text.strip()
+##    match_name = re.sub("\\s+", " ", name_text)
+##
+##    # Take the reg_name, put # in for numbers for compare.
+##    reg_name_template, n = re.subn("\\d+", "#", match_name)
+##    
+##    match = difflib.get_close_matches(reg_name_template, NAME_FORMATS,
+##                                      n = 1, # At most only one result.
+####                                      cutoff =.4
+####                                      #Particularly Practice needs this.
+##                                      )
+##    del reg_name_template
+##    if not match:
+##        return "" # We are done here.
+##    else:
+##        match = match[0]
+##    # So, we have our closest possibility, and our raw input.
+##    # Try to extract the numbers.
+##    if n == match.count("#"):
+##        # We are good, the each number present has a place. Pull them out
+##        # and shove them into the other.
+##        for num in re.findall("\\d+", match_name):
+##            match = match.replace("#", num, 1)
+##        return match
+##    else:
+##        # Well, the numbers don't match?
+##        # Well, more reliable than the numbers, is the spacings.
+##        raw_words = name_text.split(" ")
+##        known_words = list(match.split(" "))
+##        if len(raw_words) != len(known_words):
+##            # Ok, wrong number of numbers AND words.
+##            # Not parseable.
+##            if ALLOW_FAILURE:
+##                return None
+##            else:
+##                return name_text
+##        else:
+##            # The pieces line up. To continue find the "#" pieces and try
+##            # to make smart substitutions.
+##            for i in range(len(known_words)):
+##                if known_words[i] == "#":
+##                    raw_word = raw_words[i]
+##                    if raw_word.isdigit():
+##                        # This is not the problem. Assert this as normal.
+##                        known_words[i] = raw_word
+##                    else:
+##                        # Substitute the number, after working on it.
+##                        sub = NUMBER_CORRECTIONS.get(raw_words[i], None)
+##                        if sub is None:
+##                            # Ok, no idea of what to substitute.
+##                            # I am done!
+##                            if ALLOW_FAILURE:
+##                                return None
+##                            else:
+##                                return name_text
+##                        else:
+##                            known_words[i] = sub
+##                # Otherwise skip and keep going.
+##            # Now return known_words because that is our best option.
+##            return ' '.join(known_words)
+##        return match_name
+#*******************************************************************************
 def smart_read_name(name_text):
     """Post Process the name text."""
-    # First clean reg_name a little bit.
-    name_text = name_text.strip()
-    match_name = re.sub("\\s+", " ", name_text)
-
-    # Take the reg_name, put # in for numbers for compare.
-    reg_name_template, n = re.subn("\\d+", "#", match_name)
+    # Make name, special.
+    #name = Reading_Result.from_name(name)
     
-    match = difflib.get_close_matches(reg_name_template, NAME_FORMATS,
-                                      n = 1, # At most only one result.
-##                                      cutoff =.4
-##                                      #Particularly Practice needs this.
-                                      )
-    del reg_name_template
-    if not match:
-        return "" # We are done here.
+    # First clean name_text a little bit.
+    name_text = name_text.strip() # Remove whitespaces on each end.
+    name_text = re.sub(r"\s+", " ", name_text) # Make all spaces one space.
+
+    # Take the name_text, put # in for numbers for comparison.
+    name_text_comparable = re.sub(r"\d+", "#", name_text)
+
+    # Use difflib to figure out the closest match.
+    name_text_template = difflib.get_close_matches(
+        name_text_comparable, NAME_FORMATS, n = 1)
+
+    # Now, if there is no match, then we are done.
+    if not name_text_template or not name_text_template[0]:
+        return Name_Result("", None, None) # We are done here.
+
+    # Otherwise, get the match.
     else:
-        match = match[0]
-    # So, we have our closest possibility, and our raw input.
+        name_text_template = name_text_template[0]
+        
+    # So, we have our closest template, and our input.
     # Try to extract the numbers.
-    if n == match.count("#"):
-        # We are good, the each number present has a place. Pull them out
-        # and shove them into the other.
-        for num in re.findall("\\d+", match_name):
-            match = match.replace("#", num, 1)
-        return match
-    else:
-        # Well, the numbers don't match?
-        # Well, more reliable than the numbers, is the spacings.
-        raw_words = name_text.split(" ")
-        known_words = list(match.split(" "))
-        if len(raw_words) != len(known_words):
-            # Ok, wrong number of numbers AND words.
-            # Not parseable.
-            if ALLOW_FAILURE:
-                return None
-            else:
-                return name_text
+    # Now, the numbers should not have leading '0's.
+    # (Though that is allowed for the comparable creation as there should never
+    #  be a '0' in the templates.)
+    numbers = re.findall(r"\d+", name_text)
+    # Either there is 1 number (match number) or 2 (match number and total matches).
+    # Otherwise, make it up!
+    # If there is only 1 number needed, take the first. If two are needed
+    # then take the first and last.
+    # If any number has a leading 0, just call it None.
+
+    correct_number_count = name_text_template.count("#")
+
+    # First, up if we have a lack of numbers, make some up!
+    # If there are not NUMBER_CORRECTIONS, skip this step.
+    if len(numbers) < correct_number_count and NUMBER_CORRECTIONS:
+        # Try again, but this time with a harsher algorthm.
+        # Find EITHER, a number or one of the known correctable objects.
+        numbers=re.findall(r"\d+| "+" | ".join(NUMBER_CORRECTIONS)+" ",name_text)
+
+    # Now, if there are still not any numbers, then the result is just the template.
+    if not numbers:
+        return Name_Result(name_text_template, None, None)
+
+    # Look over the numbers. If they start with "0"s, make them None.
+    # If they are legit numbers, make them ints.
+    # Actually, we only care about the first and possibly last number.
+    if min(correct_number_count, len(numbers)) == 1:
+        # Only need one number!
+        number = numbers[0]
+
+        if number in NUMBER_CORRECTIONS:
+            number = int(NUMBER_CORRECTIONS[number])
         else:
-            # The pieces line up. To continue find the "#" pieces and try
-            # to make smart substitutions.
-            for i in range(len(known_words)):
-                if known_words[i] == "#":
-                    raw_word = raw_words[i]
-                    if raw_word.isdigit():
-                        # This is not the problem. Assert this as normal.
-                        known_words[i] = raw_word
-                    else:
-                        # Substitute the number, after working on it.
-                        sub = NUMBER_CORRENTIONS.get(raw_words[i], None)
-                        if sub is None:
-                            # Ok, no idea of what to substitute.
-                            # I am done!
-                            if ALLOW_FAILURE:
-                                return None
-                            else:
-                                return name_text
-                        else:
-                            known_words[i] = sub
-                # Otherwise skip and keep going.
-            # Now return known_words because that is our best option.
-            return ' '.join(known_words)
-        return match_name
+            number = int(number) if number.isdigit() and number[0] != "0" else None
+
+        return Name_Result(name_text_template, number, None)
+
+    # Otherwise, two numbers.
+    if correct_number_count == 2:
+        # Only need first and last number!
+        # Do to the last test, we know there are at least two numbers.
+        num1, num2 = numbers[0], numbers[-1]
+
+        # Correct num1, and make int
+        if num1 in NUMBER_CORRECTIONS:
+            num1 = int(NUMBER_CORRECTIONS[num1])
+        else:
+            num1 = int(num1) if num1.isdigit() and num1[0] != "0" else None
+
+        # Correct num2, and make int
+        if num2 in NUMBER_CORRECTIONS:
+            num2 = NUMBER_CORRECTIONS[num2]
+        else:
+            num2 = int(num2) if num2.isdigit() and num2[0] != "0" else None
+
+        return Name_Result(name_text_template, num1, num2)
+
+    # If we still don't have a solution, error.
+    raise RuntimeError(
+        "smart_read_name(%r) found more than two numbers in a template (%r)."
+        "This is not valid." % (name_text, name_text_template))
+#*******************************************************************************
 
 def smart_read_time(reg_time, ext_time):
     """Tead the time smartly. Post-Processing."""
@@ -333,10 +491,6 @@ def read_image(image):#, debug = False):
     if not is_numpy_image(image):
         # Error, bad image.
         raise TypeError("Image should have been a numpy array, not %r." % image)
-##    if debug:
-##        global name, time_reg, time_ext
-    #img_file = os.path.join(IMAGE_FOLDER, img_file)
-    #orig_frame = cv2.imread(img_file)
     
     # Extract the 2 portions with information.
     # Crop numpy image. NOTE: its img[y: y + h, x: x + w]
@@ -367,7 +521,7 @@ def read_image(image):#, debug = False):
         # We are done, negative match.
         time_raw = "NA"
         time_ext = "NA"
-        time     = ""
+        time     = None
     else:
         # Otherwise, analyize time.
         # Enlarge the frames and to the extraction.
@@ -392,10 +546,18 @@ def read_image(image):#, debug = False):
             logging.error("Could not put time reader back in pool.")
 
         time = smart_read_time(time_raw, time_ext)
+
+
+     # Convert time to number.
+    if time is not None and time.isdigit():
+        time = int(time)
+    else:
+        time = None
+        
     # Log the initial reading and conversion.
     # INFO:root:Name Read: 'Qualmution 5 M 78\n\n'   -> 'Qualification 5 of 78'.
     # INFO:root:Time Read: '13 \n\n' (' 3 \n\n')     -> '13'.
-    logging.info("Name Read: %-28r"      " -> %r" % (name_raw, name))
-    logging.info("Time Read: %-13r (%-12r) -> %r" % (time_raw, time_ext, time))
+    logging.info("Name Read: %-28r"      " -> %s" % (name_raw, name))
+    logging.info("Time Read: %-13r (%-12r) -> %s" % (time_raw, time_ext, time))
 
     return name, time

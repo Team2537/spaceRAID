@@ -168,7 +168,7 @@ def scan_video(video):
                     sys.stdout.write('.' * blank_count + "\r")
                     sys.stdout.flush()
 
-            timestamp += MATCH_LENGTH / 3 * 1000 # We want at least two frames per
+            timestamp += MATCH_LENGTH / 7 * 1000 # We want at least two frames per
                                                  # match. This means we need three
                                                  # chances.
 
@@ -218,48 +218,49 @@ def time_video(results):
               (match_name, start_time, stop_time))
 
     return final_times
+
 import time
+
+# ffmpeg -i source-file.foo -ss 1200 -t 600 third-10-min.m4v
+# ffmpeg_command = 'ffmpeg -i %r -ss %r -t %r %r'
+def ffmpeg_command(source, start_time, stop_time, output):
+    return ['/usr/local/Cellar/ffmpeg/3.3.4/bin/ffmpeg',
+##              # This line appears to break everything.
+##                '-codec copy', # Don't re-encode, keep the same encoding. Fast
+            '-ss', str(start_time),
+            '-i', source,
+            '-t', str(stop_time - start_time),
+            output]
+
 def write_files(video, timings):
     """Write the videos that are found in the output."""
-    output_folder = "./Examples/" + video.name.strip(".mp4")
+    output_folder = "./Examples/" + video.name.rstrip(".mp4")
     if not os.path.exists(output_folder):
         os.mkdir(output_folder)
-    # ffmpeg -i source-file.foo -ss 1200 -t 600 third-10-min.m4v
-    # ffmpeg_command = 'ffmpeg -i %r -ss %r -t %r %r'
-    def ffmpeg_command(source, start_time, stop_time, output):
-        return ['/usr/local/Cellar/ffmpeg/3.3.4/bin/ffmpeg',
-                # This line appears to break everything.
-##                '-codec copy', # Don't re-encode, keep the same encoding. Fast
-                '-ss', str(start_time),
-                '-i', source,
-                '-t', str(stop_time - start_time),
-                output]
+
     for match_name, start_time, stop_time in timings:
+        # Put together the file location.
         output_file = os.path.join(output_folder, match_name + ".mp4")
+
         if os.path.exists(output_file):
             continue
         print("Make file %s" % output_file)
+
+        # Create and processing command and launch!
         command = ffmpeg_command(video.path,start_time,stop_time,output_file)
         print("Command: %s" % command)
-        output = subprocess.Popen(command,
-                                  stdout = subprocess.PIPE,
-                                  stderr = subprocess.STDOUT)
+        output=subprocess.Popen(command,
+                                stdout=subprocess.PIPE,
+                                stderr=subprocess.STDOUT)
+
+        # Monitor the process as it runs.
         while output.poll() is None:
             output.stdout.flush()
             x = output.stdout.readline()
             if x:
                 logging.debug("ffmepg %s" % x.rstrip("\n"))
             time.sleep(.1)
-        ##print("Finished with status %s" % output.wait())
-##        input = ffmpeg.input(video.path)
-##        input = input.trim(
-##            start = start_time * 1. / 1000, end = stop_time * 1. / 1000)
-##
-##        output_file = os.path.join(output_folder, match_name + ".mp4")
-##        output = input.output(output_file)
-##
-##        print("Make file %s" % output_file)
-##        output.run()
+            print("Finished with status %s" % output.poll())
 
 def main(args = None):
     # Get argument.
