@@ -35,7 +35,7 @@ except ImportError:
     import queue
 
 MATCH_LENGTH = 180
-    
+
 __all__ = ["read_image", "ALLOW_FAILURE", "VERBOSE", "REG_NAME_ENLARGE",
            "REG_TIME_ENLARGE", "EXT_TIME_ENLARGE", "ADAPTIVE_CLASSIFIER"]
 
@@ -52,14 +52,15 @@ ALLOW_FAILURE = True
 # Basically, try to convert everything to one of these formats.
 NAME_FORMATS = {
     ""                          :   "",
-    "Test Match"                :   't',
-    "Qualification # of #"      :   'q',
-    "Quarterfinal # of #"       :   'qf',
-    "QuarterFinal Tiebreaker #" :   'qft',
-    "Semifinal #"               :   'sfn',
-    "Semifinal # of #"          :   'sf',
-    "Final #"                   :   'f',
-    "Practice # of #"           :   'p',
+    "Test Match"                :   't1',
+    "Qualification # of #"      :   'q2',
+    "Quarterfinal # of #"       :   'qf3',
+    "QuarterFinal Tiebreaker #" :   'qft4',
+    "Semifinal #"               :   'sfn5',
+    "Semifinal # of #"          :   'sf6',
+    "SemiFinal Tiebreaker #"    :   'sft7',
+    "Final #"                   :   'f8',
+    "Practice # of #"           :   'p9',
     }
 
 NAME_CHAR_LIST = "".join(sorted(set("".join(NAME_FORMATS)).difference("#")))
@@ -138,7 +139,7 @@ def name_reader():
 def time_reader():
     """Read all of the images as they get introduced to the generater."""
     image = yield None
-    
+
     # Call the tesseract library and build the processing object ("ocr").
     # Specify that all text should be in a single chunk (SINGLE_WORD).
     with tesserocr.PyTessBaseAPI(psm=tesserocr.PSM.SINGLE_WORD) as ocr:
@@ -154,7 +155,7 @@ def time_reader():
             # From a 68.73% perfect read to a 75.45%!
 
 class Name_Result(object):
-    """Name_Result(match_type, match_number, total_matches, time)"""
+    """Name_Result(match_type, match_number, total_matches)"""
     # Match Abbrevation which is the reverse of NAME_FORMATS.
     MATCH_ABBR_FORMATS = dict((item, key) for key, item in NAME_FORMATS.items())
 
@@ -177,19 +178,17 @@ class Name_Result(object):
         self.total_matches  = int(total_matches)if total_matches is not None else None
         return self
 
-##    @classmethod
-##    def from_name(cls, name):
-##        """Build a Name_Result from the given name and time."""
-##        if name is None:
-##            return cls(None, None, None)
-##        # else
-##        if name == "":
-##            # Blank
-##            pass
-
     def __bool__(self):
         """If this is object exists."""
-        return self.match_type is not ""
+        # There is no type, False.
+        if self.match_type is "":
+            return False
+        # If there is no match_number, and one is needed, False.
+        if self.match_type.count("#") >= 1 and self.match_number is None:
+            return False
+
+        # Otherwise true.
+        return True
 
     __nonzero__ = __bool__
 
@@ -199,10 +198,10 @@ class Name_Result(object):
             return "None"
         match_name = self.MATCH_ABBR_FORMATS[self.match_type]
         # Add Match Number
-        if "#" in match_name:
+        if "#" in match_name and self.match_number != None:
             match_name = match_name.replace("#", str(self.match_number), 1)
         # Add Match Quantity
-        if "#" in match_name:
+        if "#" in match_name and self.total_matches != None:
             match_name = match_name.replace("#", str(self.total_matches), 1)
         return match_name
 
@@ -210,6 +209,47 @@ class Name_Result(object):
        """Return a nicely formatted representation string"""
        return('Name_Result(match_type=%r, match_number=%r, total_matches=%r)'
               % (self.match_type, self.match_number, self.total_matches))
+
+    def __eq__(self, obj):
+        """Compare this object to other obj."""
+        # First check, that this has the varibles.
+        return str(self) == str(obj)
+
+    # Now, the comparative operators.
+    def __cmp__(self, obj):
+        """Compare this objoect to anouther."""
+        # -1 for less, 0 for equal, 1 for greater
+        if self.__eq__(obj):
+            return 0 # Yaaaay, Equal
+        # I am less, if I am an earlier match type.
+
+        try:
+            # First, check if the match_types match.
+            # If so, check the match number.
+            if self.match_type == obj.match_type:
+                # Now, check the match number.
+                return cmp(self.match_number, obj.match_number)
+
+            # Match type order is marked by the last character in the abbreviation.
+            # Except for "" which is still blank and goes first.
+
+            if self.match_type == "":
+                # Now, we already know self.match_type != obj.match_type
+                # There for I know obj.match_type is not ""
+                # I must be less.
+                return -1
+
+            # Otherwise, check the number of our type.
+            return cmp(int(self.match_type[-1]), int(obj.match_type[-1]))
+        except AttributeError:
+            # obj did not have some attribute.
+            raise TypeError("obj for cmp was of type %s, not Name_Result." %
+                            type(obj))
+
+#https://stackoverflow.com/questions/390250/elegant-ways-to-support-equivalence-equality-in-python-classes
+    def __hash__(self):
+        """Override the default hash behavior (that returns the id or the object)"""
+        return hash((self.__class__, str(self)))
 
 ##def smart_read_name(name_text):
 ##    """Post Process the name text."""
@@ -221,7 +261,7 @@ class Name_Result(object):
 ##
 ##    # Take the reg_name, put # in for numbers for compare.
 ##    reg_name_template, n = re.subn("\\d+", "#", match_name)
-##    
+##
 ##    match = difflib.get_close_matches(reg_name_template, NAME_FORMATS,
 ##                                      n = 1, # At most only one result.
 ####                                      cutoff =.4
@@ -278,21 +318,47 @@ class Name_Result(object):
 ##            return ' '.join(known_words)
 ##        return match_name
 #*******************************************************************************
+
+def fix_number(number_text):
+    """Get number from fix list and check if this is a logical number."""
+    # Correct num1, and make int
+    if number_text in NUMBER_CORRECTIONS:
+        return int(NUMBER_CORRECTIONS[number_text])
+    
+    #else, look for numbers that are valid, but not logical.
+    if not number_text or len(number_text) > 3 or not number_text.isdigit():
+        # Either 0 characters or greater than 3 characters (>1000)
+        # Or this is simply not a number.
+        return None
+
+    if number_text[0] == "0" and number_text != "0":
+        # Preleading '0'
+        # Not valid.
+        return None
+
+    # else, return the integer represntation, is it exists.
+    return int(number_text)
+
 def smart_read_name(name_text):
     """Post Process the name text."""
     # Make name, special.
-    #name = Reading_Result.from_name(name)
-    
+
     # First clean name_text a little bit.
     name_text = name_text.strip() # Remove whitespaces on each end.
     name_text = re.sub(r"\s+", " ", name_text) # Make all spaces one space.
 
     # Take the name_text, put # in for numbers for comparison.
-    name_text_comparable = re.sub(r"\d+", "#", name_text)
+    name_text_comparable = re.sub(r"\b\d+\b", "#", name_text)
 
     # Use difflib to figure out the closest match.
+
+    # Cutoff is lowered by .01, this seems to make a difference for something
+    # like 'artufinal Tinehmher\n\n' -> QuarterFinal Tiebreaker None
+    # while this does not match regularly.
+
+    # Maybe want to lower cutoff even further.
     name_text_template = difflib.get_close_matches(
-        name_text_comparable, NAME_FORMATS, n = 1)
+        name_text_comparable, NAME_FORMATS, n = 1, cutoff = .59)
 
     # Now, if there is no match, then we are done.
     if not name_text_template or not name_text_template[0]:
@@ -301,13 +367,13 @@ def smart_read_name(name_text):
     # Otherwise, get the match.
     else:
         name_text_template = name_text_template[0]
-        
+
     # So, we have our closest template, and our input.
     # Try to extract the numbers.
     # Now, the numbers should not have leading '0's.
     # (Though that is allowed for the comparable creation as there should never
     #  be a '0' in the templates.)
-    numbers = re.findall(r"\d+", name_text)
+    numbers = re.findall(r"\b\d+\b", name_text)
     # Either there is 1 number (match number) or 2 (match number and total matches).
     # Otherwise, make it up!
     # If there is only 1 number needed, take the first. If two are needed
@@ -321,10 +387,10 @@ def smart_read_name(name_text):
     if len(numbers) < correct_number_count and NUMBER_CORRECTIONS:
         # Try again, but this time with a harsher algorthm.
         # Find EITHER, a number or one of the known correctable objects.
-        numbers=re.findall(r"\d+| "+" | ".join(NUMBER_CORRECTIONS)+" ",name_text)
+        numbers=re.findall(r"\d+|\b"+r"\b|\b".join(NUMBER_CORRECTIONS)+r"\b",name_text)
 
     # Now, if there are still not any numbers, then the result is just the template.
-    if not numbers:
+    if not numbers or not correct_number_count:
         return Name_Result(name_text_template, None, None)
 
     # Look over the numbers. If they start with "0"s, make them None.
@@ -332,13 +398,8 @@ def smart_read_name(name_text):
     # Actually, we only care about the first and possibly last number.
     if min(correct_number_count, len(numbers)) == 1:
         # Only need one number!
-        number = numbers[0]
-
-        if number in NUMBER_CORRECTIONS:
-            number = int(NUMBER_CORRECTIONS[number])
-        else:
-            number = int(number) if number.isdigit() and number[0] != "0" else None
-
+        number = fix_number(numbers[0])
+        
         return Name_Result(name_text_template, number, None)
 
     # Otherwise, two numbers.
@@ -348,22 +409,20 @@ def smart_read_name(name_text):
         num1, num2 = numbers[0], numbers[-1]
 
         # Correct num1, and make int
-        if num1 in NUMBER_CORRECTIONS:
-            num1 = int(NUMBER_CORRECTIONS[num1])
-        else:
-            num1 = int(num1) if num1.isdigit() and num1[0] != "0" else None
-
+        num1 = fix_number(num1)
+        
         # Correct num2, and make int
-        if num2 in NUMBER_CORRECTIONS:
-            num2 = NUMBER_CORRECTIONS[num2]
-        else:
-            num2 = int(num2) if num2.isdigit() and num2[0] != "0" else None
+        num2 = fix_number(num2)
+
+        # num1 should be less than num2, otherwise num2 is wrong.
+        if num1 > num2:
+            num2 = None
 
         return Name_Result(name_text_template, num1, num2)
 
     # If we still don't have a solution, error.
     raise RuntimeError(
-        "smart_read_name(%r) found more than two numbers in a template (%r)."
+        "smart_read_name(%r) found more than two numbers in a template (%r). "
         "This is not valid." % (name_text, name_text_template))
 #*******************************************************************************
 
@@ -401,17 +460,17 @@ def smart_read_time(reg_time, ext_time):
         time = time[1:]
 
     # Finished processing.
-    
+
     # See if this is a valid string and return.
     # Make sure the time is a number and is a decent length.
     if time.isdigit() and int(time) < MATCH_LENGTH:
         return time
-    
+
     elif ALLOW_FAILURE:
         return None
     else:
         return ""
-    
+
 # Now threading.
 # For threading, I need to make a pool of workers to process frames and pass
 # them back to the correct functions.
@@ -439,7 +498,7 @@ def init():
             # To large?
             # Pull
             NAME_POOL.get_nowait()
-            
+
     except queue.Full:
         # Somehow, NAME_POOL_SIZE must have changed?
         logging.error("NAME_POOL_SIZE changed during pool initalization.")
@@ -465,7 +524,7 @@ def init():
             # To large?
             # Pull
             TIME_POOL.get_nowait()
-            
+
     except queue.Full:
         # Somehow, TIME_POOL_SZE must have changed?
         logging.error("TIME_POOL_SIZE changed during pool initalization.")
@@ -476,7 +535,8 @@ def init():
         # 1 TIME_POOL_SIZE is somehow less than zero.
         # Or TIME_POOL.qsize was wrong (changed do to mulithreading.)
         if TIME_POOL_SIZE <= 0:
-            logging.fatal("TIME_POOL_SIZE is %d. Which is not greater than zero." % TIME_POOL_SIZE)
+            logging.fatal("TIME_POOL_SIZE is %d. Which is not greater than zero." %
+                          TIME_POOL_SIZE)
         else:
             logging.error("TIME_POOL.qsize() changed during initalization.")
 
@@ -491,7 +551,7 @@ def read_image(image):#, debug = False):
     if not is_numpy_image(image):
         # Error, bad image.
         raise TypeError("Image should have been a numpy array, not %r." % image)
-    
+
     # Extract the 2 portions with information.
     # Crop numpy image. NOTE: its img[y: y + h, x: x + w]
     nx, ny, nw, nh = match_name_rect
@@ -553,7 +613,7 @@ def read_image(image):#, debug = False):
         time = int(time)
     else:
         time = None
-        
+
     # Log the initial reading and conversion.
     # INFO:root:Name Read: 'Qualmution 5 M 78\n\n'   -> 'Qualification 5 of 78'.
     # INFO:root:Time Read: '13 \n\n' (' 3 \n\n')     -> '13'.

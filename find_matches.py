@@ -12,12 +12,12 @@ import subprocess
 import video_loader
 import process_frames
 
-from collections   import Counter # Counts frequency of
+from collections  import Counter # Counts frequency
 from terminalsize import get_terminal_size
 
-MATCH_PREROLL = 20 + 40 # seconds
+MATCH_PREROLL = 20 + 20 # seconds
 
-MATCH_LENGTH = 188 + 35 + 20 # seconds (can be different with weird matches)
+MATCH_LENGTH = 188 + 35 + 50 # seconds (can be different with weird matches)
 
 # So, we now have a function that can take an image and read it.
 # What we really need is a function that takes a movie and a time.
@@ -76,9 +76,9 @@ def read_moment(video, frame_count = None):
     # 5: Take 2 previous frames and next 3.
     #...
     frames = [] # The frames that need to be analyized.
-    moment = Counter() # List to put the frame results in.
+    moment = Counter() # Counter to put the frame results in.
 
-    # Set the video back MOMENT_MINIMUM_FRAMES//2 frames.
+    # Set the video back MOMENT_MINIMUM_FRAMES // 2 frames.
     if frame_count < 0:
         frame_count = video.get_frame_index()
 
@@ -97,7 +97,7 @@ def read_moment(video, frame_count = None):
 
         # Add another frame if this one failed.
         # But if we have reached max frames, do nothing.
-        if (name is None or time is None) and len(frames) < MOMENT_MAXIMUM_FRAMES:
+        if (not name or not time) and len(frames) < MOMENT_MAXIMUM_FRAMES:
             # Failed frame read.
             frames.append(video.get_frame()) # Read one more frame.
 
@@ -112,7 +112,7 @@ def read_moment(video, frame_count = None):
         # Most common match.
         common, n = moment.most_common(1)[0] # Returns the most common element.
     except IndexError:
-        # moment.most_common is emply?
+        # moment.most_common is empty?
         logging.debug("No readable frames from video %r." % video.name)
         return None, None # Failed
 
@@ -176,9 +176,30 @@ def scan_video(video):
     finally:
         if blank_count:
             print("")
-            blank_count = 0
-        # Print some data about what was returned.
-        print("Found %d matches." % len(match_data))
+##            blank_count = 0 # This is not needed. Never checked again.
+
+    # Print some data about what was returned.
+    print("Found %d matches." % len(match_data))
+
+    # Now, go through the names and homogenized the total number of matches.
+    
+    # Get the frequency of total_matches.
+    total_matches=Counter(name.total_matches for name, t in match_data.values() if name is not None)
+    # Remove "None"
+    total_matches[None] = 0
+
+    # Get the most common.
+    common_total = total_matches.most_common(1)
+
+    if not common_total:
+        print("No Common Totals")
+    else:
+        common_total = common_total[0]
+
+    # Now substitute THAT, for each total_matches.
+    for name, time in match_data.values():
+        if name is not None:
+            name.total_matches = common_total
 
     return match_data
 
@@ -240,7 +261,7 @@ def write_files(video, timings):
 
     for match_name, start_time, stop_time in timings:
         # Put together the file location.
-        output_file = os.path.join(output_folder, match_name + ".mp4")
+        output_file = os.path.join(output_folder, str(match_name) + ".mp4")
 
         if os.path.exists(output_file):
             continue
@@ -260,7 +281,7 @@ def write_files(video, timings):
             if x:
                 logging.debug("ffmepg %s" % x.rstrip("\n"))
             time.sleep(.1)
-            print("Finished with status %s" % output.poll())
+        print("Finished with status %s" % output.poll())
 
 def main(args = None):
     # Get argument.
