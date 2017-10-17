@@ -114,7 +114,7 @@ def read_moment(video, frame_count = None):
     except IndexError:
         # moment.most_common is empty?
         logging.debug("No readable frames from video %r." % video.name)
-        return None, None # Failed
+        return process_frames.Name_Result('', None, None), None # Failed
 
     # Is the percentage of the most common frame greater than the needed
     # percentage?
@@ -123,7 +123,7 @@ def read_moment(video, frame_count = None):
         # Return the common than!
         return common
     # Otherwise, this fails.
-    return None, None
+    return process_frames.Name_Result('', None, None), None
 
 VERBOSE = 2
 SHOW_VISUAL = True
@@ -184,9 +184,9 @@ def scan_video(video):
     # Now, go through the names and homogenized the total number of matches.
     
     # Get the frequency of total_matches.
-    total_matches=Counter(name.total_matches for name, t in match_data.values() if name is not None)
+    total_matches=Counter(name.total_matches for name, t in match_data.values())# if name is not None)
     # Remove "None"
-    total_matches[None] = 0
+    del total_matches[None]
 
     # Get the most common.
     common_total = total_matches.most_common(1)
@@ -194,12 +194,15 @@ def scan_video(video):
     if not common_total:
         print("No Common Totals")
     else:
-        common_total = common_total[0]
+        common_total, n = common_total[0]
 
     # Now substitute THAT, for each total_matches.
     for name, time in match_data.values():
-        if name is not None:
-            name.total_matches = common_total
+##        if name is not None:
+##            name.total_matches = common_total
+##        else:
+##            print("Encountered a None in match_data.")
+        name.total_matches = common_total
 
     return match_data
 
@@ -255,7 +258,13 @@ def ffmpeg_command(source, start_time, stop_time, output):
 
 def write_files(video, timings):
     """Write the videos that are found in the output."""
-    output_folder = "./Examples/" + video.name.rstrip(".mp4")
+    # First, get rid of any recongnizable extension.
+    video_name = video.name
+    if   video_name.endswith(".mp4"): video_name = video_name.rstrip(".mp4")
+    elif video_name.endswith(".mov"): video_name = video_name.rstrip(".mov")
+
+    # Create Output Folder.
+    output_folder = "./Examples/" + video_name
     if not os.path.exists(output_folder):
         os.mkdir(output_folder)
 
