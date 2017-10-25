@@ -150,7 +150,7 @@ def scan_video(video):
                 # If anything.
                 if blank_count:
                     print("")
-                print("Read timestamp %8.2f to be %r" %(timestamp,(name,time)))
+                print("Read timestamp %8.2f to be %s, %s"%(timestamp,name,time))
                 blank_count = 0
             else:
                 blank_count += 1
@@ -248,8 +248,9 @@ import time
 # ffmpeg -i source-file.foo -ss 1200 -t 600 third-10-min.m4v
 # ffmpeg_command = 'ffmpeg -i %r -ss %r -t %r %r'
 def ffmpeg_command(source, start_time, stop_time, output):
-    return ['/usr/local/Cellar/ffmpeg/3.3.4/bin/ffmpeg',
+    return ['ffmpeg',
 ##              # This line appears to break everything.
+            '-loglevel', 'warning', # Less output
 ##                '-codec copy', # Don't re-encode, keep the same encoding. Fast
             '-ss', str(start_time),
             '-i', source,
@@ -264,7 +265,7 @@ def write_files(video, timings):
     elif video_name.endswith(".mov"): video_name = video_name.rstrip(".mov")
 
     # Create Output Folder.
-    output_folder = "./Examples/" + video_name
+    output_folder = os.path.join("./Examples/", video_name)
     if not os.path.exists(output_folder):
         os.mkdir(output_folder)
 
@@ -277,7 +278,7 @@ def write_files(video, timings):
         print("Make file %s" % output_file)
 
         # Create and processing command and launch!
-        command = ffmpeg_command(video.path,start_time,stop_time,output_file)
+        command = ffmpeg_command(video.path, start_time, stop_time, output_file)
         print("Command: %s" % command)
         output=subprocess.Popen(command,
                                 stdout=subprocess.PIPE,
@@ -287,8 +288,9 @@ def write_files(video, timings):
         while output.poll() is None:
             output.stdout.flush()
             x = output.stdout.readline()
-            if x:
-                logging.debug("ffmepg %s" % x.rstrip("\n"))
+            if x: logging.debug("ffmepg %s" % x.rstrip("\n"))
+##            x = output.stderr.readline()
+##            if x: logging.warning("ffmepg %s" % x.rstrip("\n"))
             time.sleep(.1)
         print("Finished with status %s" % output.poll())
 
@@ -311,6 +313,8 @@ def main(args = None):
         video = video_loader.Video(f)
         try:
             results = scan_video(video)
+            # Close the windows.
+            process_frames.deinit()
             timings = time_video(results)
             write_files(video, timings)
         except KeyboardInterrupt:

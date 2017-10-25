@@ -540,6 +540,13 @@ def init():
         else:
             logging.error("TIME_POOL.qsize() changed during initalization.")
 
+def deinit():
+    """Deinitalize the processor."""
+    # This frees up the memory and closes the cv2 windows.
+    NAME_POOL = queue.Queue(NAME_POOL_SIZE)
+    TIME_POOL = queue.Queue(TIME_POOL_SIZE)
+    cv2.destroyAllWindows()
+    
 def read_image(image):#, debug = False):
     """Take image files and try to read the words from them.
        Takes a numpy image.
