@@ -1,0 +1,23 @@
+#!/bin/bash
+# A simple script to find how many of various tagged files are in a folder.
+FOLDER=$1
+# Default to current folder.
+
+# Sources: https://stackoverflow.com/questions/30271328/how-do-i-get-mdfind-to-include-folder-matches-in-addition-to-files
+if [ "$FOLDER" = "" ]; then
+  FOLDER='.'
+fi
+GREEN=`mdfind -count -onlyin $FOLDER "kMDItemUserTags == Green && ! kMDItemContentType == public.folder"`
+YELLOW=`mdfind -count -onlyin $FOLDER "kMDItemUserTags == Green && ! kMDItemContentType == public.folder"`
+RED=`mdfind -count -onlyin $FOLDER "kMDItemUserTags == Green && ! kMDItemContentType == public.folder"`
+TOTAL_COUNT=`find $FOLDER -type f | wc -l`
+#TOTAL_COUNT=`ls -p $FOLDER | grep -v / | wc -l`
+#echo "In folder $FOLDER"
+echo -n "There was $GREEN green tags. ("
+python -c "print('%.02f%%)'%($GREEN*100./$TOTAL_COUNT))"
+echo -n "There was $YELLOW yellow tags. ("
+python -c "print('%.02f%%)'%($YELLOW*100./$TOTAL_COUNT))"
+echo -n "There was $RED red tags. ("
+python -c "print('%.02f%%)'%($RED*100./$TOTAL_COUNT))"
+echo "Of $TOTAL_COUNT files."
+#echo $TOTAL_COUNT "/" $TOTAL_DONT_COUNT
