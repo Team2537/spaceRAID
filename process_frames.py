@@ -17,6 +17,7 @@ import cv2
 import sys
 import difflib
 import logging # I will get to adding this eventually.
+from math import ceil, floor # For pixel corrections.
 from collections import namedtuple
 
 import tesserocr
@@ -24,8 +25,10 @@ from PIL import Image
 from numpy import ndarray
 from extract_lib import extract_image
 # Format: (x, y, width, height) Assumed frame size (512, 288)
-match_name_rect = (107, 224, 103, 16)
-match_time_rect = (244, 243, 28, 13)
+MATCH_NAME_RECT = ( 90, 224, 130,  16)
+MATCH_TIME_RECT = (244, 240,  28,  16)
+
+DEFAULT_SIZE = (512, 288)
 
 # And for threading
 import threading
@@ -46,6 +49,7 @@ REG_NAME_ENLARGE = 5
 REG_TIME_ENLARGE = 20
 EXT_TIME_ENLARGE = 14
 
+DEBUG = True
 ADAPTIVE_CLASSIFIER = True
 ALLOW_FAILURE = True
 
@@ -561,11 +565,36 @@ def read_image(image):#, debug = False):
 
     # Extract the 2 portions with information.
     # Crop numpy image. NOTE: its img[y: y + h, x: x + w]
-    nx, ny, nw, nh = match_name_rect
-    tx, ty, tw, th = match_time_rect
-    name_frame = image[ny: ny + nh, nx: nx + nw]
-    time_frame = image[ty: ty + th, tx: tx + tw]
-    del image # Its a full image in memory. Clear as fast as possible.
+    nx, ny, nw, nh = MATCH_NAME_RECT
+    tx, ty, tw, th = MATCH_TIME_RECT
+    # Take into effect the scaling factor of the screen size.
+    dx, dy = DEFAULT_SIZE
+    iy, ix, _ = image.shape # Y and X sizes. There is a third argument which
+    # I think is color depth?
+    
+    # Calculate a scale factor. Assume a cropping on the horizontal if needed.
+    r_x, r_y = ix * 1. / dx, iy * 1. / dy
+    # Actually, r_y is more reliable.
+    r_x = r_y
+    assert r_x != 0 and r_y != 0
+    name_top,    time_top   = int(floor(ny * r_y)),   int(floor(ty * r_y))
+    name_left,   time_left  = int(floor(nx * r_x)),   int(floor(tx * r_x))
+    name_bottom, time_bottom= int(ceil((ny+nh)*r_y)), int(ceil((ty+th)*r_y))
+    name_right,  time_right = int(ceil((nx+nw)*r_x)), int(ceil((tx+tw)*r_x))
+    assert all([name_top,    time_top,   name_left, time_left,
+                name_bottom, time_bottom,name_right,time_right])
+    
+    # Where it matters, make the box a little larger for rounding error.
+##    name_frame = image[ny : ny + nh, nx : nx + nw]
+##    time_frame = image[ty : ty + th, tx : tx + tw]
+    name_frame = image[name_top : name_bottom, name_left : name_right]
+    time_frame = image[time_top : time_bottom, time_left : time_right]
+##    del image # Its a full image in memory. Clear as fast as possible.
+
+    # For testing.
+    if DEBUG:
+        cv2.imshow("Name", name_frame)
+        cv2.imshow("Time", time_frame)
 
     # Turns out an enlargment significantly helps the readability of the frames
 
