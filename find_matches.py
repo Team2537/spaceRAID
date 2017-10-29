@@ -265,7 +265,7 @@ def write_files(video, timings):
     elif video_name.endswith(".mov"): video_name = video_name.rstrip(".mov")
 
     # Create Output Folder.
-    output_folder = os.path.join("./Examples/", video_name)
+    output_folder = os.path.join("./Results/", video_name)
     if not os.path.exists(output_folder):
         os.mkdir(output_folder)
 

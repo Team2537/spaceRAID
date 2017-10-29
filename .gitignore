@@ -1,7 +1,8 @@
 # Ignore the example section.
-# I can make this avalible to you but it is 2GB of pictures and video that will never change so lets not bug git with it.
+# I can make this avalible to you but it is 6GB of pictures and video that 
+# will never change so lets not bug git with it.
 Examples/
-
+Results/
 # Python related ignore stuff.
 # Byte-compiled / optimized / DLL files
 __pycache__/
