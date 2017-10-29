@@ -25,8 +25,39 @@ from PIL import Image
 from numpy import ndarray
 from extract_lib import extract_image
 # Format: (x, y, width, height) Assumed frame size (512, 288)
-MATCH_NAME_RECT = ( 90, 224, 130,  16)
-MATCH_TIME_RECT = (244, 240,  28,  16)
+
+# These are the new pixel values.
+# Here are the results from some testing on the detection rects.
+# The format is (Green:Yellow:Red)/Total 0.0%.
+# Green         - A good video with match and end score board.
+# Yellow        - An ok video lacking part of the match or the score board.
+#                 Possible mislabeled total matches. The role of thumb is the
+#                 match should be in progress or starting at least halfway
+#                 through the clip.
+# Red           - A bad video either lacking the match or mislabeled.
+# Total         - Total number of found matches. Note that "Test Match" will
+#                 show up here but not as green, yellow, or red.
+#
+# New Name: MATCH_NAME_RECT = ( 90, 224, 130,  16)
+# New Time: MATCH_TIME_RECT = (244, 240,  28,  16)
+#
+# Old Name: MATCH_NAME_RECT = (107, 224, 103,  16)
+# Old Time: MATCH_TIME_RECT = (244, 243,  28,  13)
+# Test Video 1 (Friday 4-7-17_ND)
+# (New Name And Time)		(21:11:12)/44	47.73%
+# (Old Name And Time)		(29:10:20)/60	48.33%
+# (New Name, Old Time)		(25:10:18)/54	46.30%
+#
+# So evidently, the "new" settings are not so great.
+
+# That is why both settings are here.
+# The NEW settings.
+##MATCH_NAME_RECT = ( 90, 224, 130,  16)
+##MATCH_TIME_RECT = (244, 240,  28,  16)
+
+# The OLD settings.
+MATCH_NAME_RECT = (107, 224, 103,  16)
+MATCH_TIME_RECT = (244, 243,  28,  13)
 
 DEFAULT_SIZE = (512, 288)
 
