@@ -289,8 +289,6 @@ def write_files(video, timings):
             output.stdout.flush()
             x = output.stdout.readline()
             if x: logging.debug("ffmepg %s" % x.rstrip("\n"))
-##            x = output.stderr.readline()
-##            if x: logging.warning("ffmepg %s" % x.rstrip("\n"))
             time.sleep(.1)
         print("Finished with status %s" % output.poll())
 
