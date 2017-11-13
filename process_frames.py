@@ -16,7 +16,7 @@ import os
 import cv2
 import sys
 import difflib
-import logging # I will get to adding this eventually.
+import logging
 from math import ceil, floor # For pixel corrections.
 from collections import namedtuple
 
@@ -81,8 +81,14 @@ REG_TIME_ENLARGE = 20
 EXT_TIME_ENLARGE = 14
 
 DEBUG = True
-ADAPTIVE_CLASSIFIER = True
 ALLOW_FAILURE = True
+ADAPTIVE_CLASSIFIER = True
+
+# Logging setup.
+logger = logging.getLogger('process_frames')
+logger.addHandler(logging.FileHandler('./frame_log.txt'))
+
+logging = logger
 
 # Basically, try to convert everything to one of these formats.
 NAME_FORMATS = {
@@ -359,7 +365,7 @@ def fix_number(number_text):
     # Correct num1, and make int
     if number_text in NUMBER_CORRECTIONS:
         return int(NUMBER_CORRECTIONS[number_text])
-    
+
     #else, look for numbers that are valid, but not logical.
     if not number_text or len(number_text) > 3 or not number_text.isdigit():
         # Either 0 characters or greater than 3 characters (>1000)
@@ -434,7 +440,7 @@ def smart_read_name(name_text):
     if min(correct_number_count, len(numbers)) == 1:
         # Only need one number!
         number = fix_number(numbers[0])
-        
+
         return Name_Result(name_text_template, number, None)
 
     # Otherwise, two numbers.
@@ -445,7 +451,7 @@ def smart_read_name(name_text):
 
         # Correct num1, and make int
         num1 = fix_number(num1)
-        
+
         # Correct num2, and make int
         num2 = fix_number(num2)
 
@@ -519,6 +525,7 @@ def init():
     """Add the generaters to NAME_POOL and TIME_POOL for processing.
        This can take a little bit of time.
     """
+    logging.info("Initalizing process_frames.py")
     # Set NAME_POOL to have NAME_POOL_SIZE generators. Because of multithreading,
     # this can fail in many strange ways.
     # Then set TIME_POOL to have TIME_POOL_SIZE generators.
@@ -577,11 +584,12 @@ def init():
 
 def deinit():
     """Deinitalize the processor."""
+    logging.info("Deinitalizing process_frames.py")
     # This frees up the memory and closes the cv2 windows.
     NAME_POOL = queue.Queue(NAME_POOL_SIZE)
     TIME_POOL = queue.Queue(TIME_POOL_SIZE)
     cv2.destroyAllWindows()
-    
+
 def read_image(image):#, debug = False):
     """Take image files and try to read the words from them.
        Takes a numpy image.
@@ -602,7 +610,7 @@ def read_image(image):#, debug = False):
     dx, dy = DEFAULT_SIZE
     iy, ix, _ = image.shape # Y and X sizes. There is a third argument which
     # I think is color depth?
-    
+
     # Calculate a scale factor. Assume a cropping on the horizontal if needed.
     r_x, r_y = ix * 1. / dx, iy * 1. / dy
     # Actually, r_y is more reliable.
@@ -614,7 +622,7 @@ def read_image(image):#, debug = False):
     name_right,  time_right = int(ceil((nx+nw)*r_x)), int(ceil((tx+tw)*r_x))
     assert all([name_top,    time_top,   name_left, time_left,
                 name_bottom, time_bottom,name_right,time_right])
-    
+
     # Where it matters, make the box a little larger for rounding error.
 ##    name_frame = image[ny : ny + nh, nx : nx + nw]
 ##    time_frame = image[ty : ty + th, tx : tx + tw]
