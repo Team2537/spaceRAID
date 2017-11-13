@@ -43,10 +43,19 @@ from extract_lib import extract_image
 #
 # Old Name: MATCH_NAME_RECT = (107, 224, 103,  16)
 # Old Time: MATCH_TIME_RECT = (244, 243,  28,  13)
-# Test Video 1 (Friday 4-7-17_ND)
-# (New Name And Time)		(21:11:12)/44	47.73%
-# (Old Name And Time)		(29:10:20)/60	48.33%
-# (New Name, Old Time)		(25:10:18)/54	46.30%
+# Test Video 1 (CHS Championship by Booz Allen Hamilton/Friday 4-7-17_ND)
+# Best: Old Name, New Time
+# Old Name  Old Time        (29:10:20)/60       48.33%
+# Old Name  New Time        (28: 7:11)/47       59.57%
+# New Name  New Time        (21:11:12)/44       47.73%
+# New Name  Old Time        (25:10:18)/54       46.30%
+#
+# Test Video 2 (CHS Championship by Booz Allen Hamilton/Saturday 4-8-17_ND)
+# Best: Old Name, Inconclusive Time (Lean's Old)
+# Old Name  Old Time        (16:10: 9)/36       44.44%
+# Old Name  New Time        (12: 7:14)/34       35.29%
+# New Name  New Time        (12: 9:12)/34       35.29%
+# New Name  Old Time        ( 9:13:14)/37       24.32%
 #
 # So evidently, the "new" settings are not so great.
 
@@ -70,11 +79,17 @@ except ImportError:
 
 MATCH_LENGTH = 180
 
-__all__ = ["read_image", "ALLOW_FAILURE", "VERBOSE", "REG_NAME_ENLARGE",
-           "REG_TIME_ENLARGE", "EXT_TIME_ENLARGE", "ADAPTIVE_CLASSIFIER"]
+__all__ = ["read_image",
+           "DEBUG",
+           "VERBOSE",
+           "REG_NAME_ENLARGE",
+           "REG_TIME_ENLARGE",
+           "EXT_TIME_ENLARGE",
+           "ADAPTIVE_CLASSIFIER"
+           ]
 
 __author__ = "Matthew Schweiss"
-__version__ = "1"
+__version__ = "1.0"
 
 REG_NAME_ENLARGE = 5
 REG_TIME_ENLARGE = 20
@@ -92,12 +107,19 @@ logging = logger
 
 # Basically, try to convert everything to one of these formats.
 NAME_FORMATS = {
+    # Format:
+    # Name of Match: This will be checked for in read strings.
+    # "#" is the only special character and means a number goes there.
+    #
+    # The value is the tag: This is used to determine the match order
+    # and differentiate match types. The blank ("") is special. It means
+    # will the data will be taken as a failed match.
     ""                          :   "",
     "Test Match"                :   't1',
     "Qualification # of #"      :   'q2',
     "Quarterfinal # of #"       :   'qf3',
     "QuarterFinal Tiebreaker #" :   'qft4',
-    "Semifinal #"               :   'sfn5',
+    "Semifinal #"               :   'sf5',
     "Semifinal # of #"          :   'sf6',
     "SemiFinal Tiebreaker #"    :   'sft7',
     "Final #"                   :   'f8',
