@@ -88,9 +88,9 @@ def _get_terminal_size_windows():
 def _get_terminal_size_tput():
     # get terminal width
     # src: http://stackoverflow.com/questions/263890/how-do-i-find-the-width-height-of-a-terminal-window
-    try:
-        cols = int(subprocess.check_call(shlex.split('tput cols')))
-        rows = int(subprocess.check_call(shlex.split('tput lines')))
+    try:# Fixed check_call -> check_output
+        cols = int(subprocess.check_output(shlex.split('tput cols')))
+        rows = int(subprocess.check_output(shlex.split('tput lines')))
         return (cols, rows)
     except:
         pass
@@ -130,5 +130,8 @@ def _get_terminal_size_linux():
     return int(cr[1]), int(cr[0])
 
 if __name__ == "__main__":
-    sizex, sizey = get_terminal_size()
-    print('width =', sizex, 'height =', sizey)
+    print('Terminal Size')
+    print('Default: %r' % (_default(),))
+    print('Windows: %r' % (_get_terminal_size_windows(),))
+    print('Tput   : %r' % (_get_terminal_size_tput(),))
+    print('Linux  : %r' % (_get_terminal_size_linux(),))
