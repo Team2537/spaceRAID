@@ -1,19 +1,18 @@
 #!/usr/bin/env python
 """Takes the video feed and looks for signs that a match is there."""
-import ffmpeg
-
 import os
 import sys
 import math
 import queue
+import ffmpeg
 import logging
 import subprocess
 
-import video_loader
-import process_frames
-
 from collections  import Counter # Counts frequency
 from terminalsize import get_terminal_size
+
+import video_loader
+import process_frames
 
 MATCH_PREROLL = 20 + 20 # seconds
 
@@ -182,7 +181,7 @@ def scan_video(video):
     print("Found %d matches." % len(match_data))
 
     # Now, go through the names and homogenized the total number of matches.
-    
+
     # Get the frequency of total_matches.
     total_matches=Counter(name.total_matches for name, t in match_data.values())# if name is not None)
     # Remove "None"
@@ -292,7 +291,7 @@ def write_files(video, timings):
             time.sleep(.1)
         print("Finished with status %s" % output.poll())
 
-def main(args = None):
+def test(args = None):
     # Get argument.
     if args is None:
         args = sys.argv[1:]
@@ -321,4 +320,4 @@ def main(args = None):
             video_loader.close_image()
 
 if __name__ == '__main__':
-    main()
+    test()
