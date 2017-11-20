@@ -42,6 +42,7 @@ logging.basicConfig(
     format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
 
 import find_matches
+import video_loader # This should be removed at some point.
 
 # ==============
 # Type classes
@@ -122,7 +123,7 @@ class PathType(object):
 
         return string
 
-############################### Parser ###############################
+#################################### Parser ####################################
 parser = argparse.ArgumentParser(prog = "spaceraid")
 
 parser.add_argument("-q", "--quiet", dest = "log_level", action = "store_const",
@@ -149,7 +150,7 @@ subparsers = parser.add_subparsers(
     description = "Processing operation to be taken.",
     help="Commands for %(prog)s. Run is default.")
 
-################################ Run #################################
+##################################### Run ######################################
 parser_run = subparsers.add_parser("run", help = \
     "Do parse, finish, and upload. Run will be done if no command is given.")
 
@@ -166,21 +167,43 @@ def run(namespace):
 parser_run.set_defaults(operation = run)
 
 del parser_run # No need to keep varible.
-############################### Parse ################################
+#################################### Parse #####################################
 parser_parse = subparsers.add_parser("parse", help = "Analyze the video(s).")
 
 def parse(namespace):
     """Parse operation for spaceraid."""
-    raise NotImplementedError("Haven't made parse yet.")
+##    raise NotImplementedError("Haven't made parse yet.")
+    try:
+        process_frames.init()
+
+        for f in namespace.source_files:
+            if not os.path.isfile(f):
+                logging.error("File %r does not exists." % f)
+
+            try:
+                video = video_loader.Video(f)
+                
+                results = find_matches.scan_video(video)
+                # Close the windows.
+                process_frames.deinit()
+                timings = find_matches.time_video(results)
+                find_matches.write_files(video, timings)
+            except ValueError:
+                # The file stopped existing. Error.
+                raise IOError("Video stopped existing while opening.")
+            finally:
+                video_loader.close_image()
+    finally:
+        process_frames.deinit()
 
 parser_parse.set_defaults(operation = parse)
 
 del parser_parse # No need to keep varible.
-############################### Finish ###############################
-# -t --tags [all|yellow|green]                                       #
-#     Look at the eXtra tags and only finish tags tagged with        #
-#     green and not red. Default is green. Yellow is will            #
-#     process videos with yellow flags but not green.                #
+#################################### Finish ####################################
+# -t --tags [all|yellow|green]                                                 #
+#     Look at the eXtra tags and only finish tags tagged with                  #
+#     green and not red. Default is green. Yellow is will                      #
+#     process videos with yellow flags but not green.                          #
 
 parser_finish = subparsers.add_parser("finish", help = (
     "Fixup the output video files. Add intro and fix name."))
@@ -197,7 +220,7 @@ def finish(namespace):
 
 parser_finish.set_defaults(operation = finish)
 del parser_finish # No need to keep varible.
-################################ Run #################################
+##################################### Run ######################################
 parser_upload=subparsers.add_parser("upload",help="Upload the file to youtube.")
 
 def upload(namespace):
@@ -206,7 +229,7 @@ def upload(namespace):
 
 parser_upload.set_defaults(operation = upload)
 del parser_upload # No need to keep varible.
-################################ Test ################################
+##################################### Test #####################################
 parser_test = subparsers.add_parser("test", help = (
     "Run a test to see if the video is readable."))
 
@@ -214,10 +237,9 @@ parser_test = subparsers.add_parser("test", help = (
 ##parser_test.add_argument("-i", "--image_folder", type = PathType(type='dir'))
 
 parser_test.add_argument("-a", "--answers", dest = "answers_file",
-                         type = PathType(), help =
-                         "Actual results for the video so they "
-                         "can be compared to. This should be a "
-                         "cvs file with frame #, name, time.")
+                         type = PathType(), help = \
+    "Actual results for the video so they can be compared to."
+    "This should be a cvs file with frame #, name, time.")
 
 def test(namespace):
     """Test operation for spaceraid."""
@@ -225,12 +247,31 @@ def test(namespace):
 
 parser_test.set_defaults(operation = test)
 del parser_test
-######################################################################
-parser.add_argument('source_file', nargs='+', action = "append", type= PathType(),
+################################################################################
+parser.add_argument('source_files', nargs='+', action = "append", type= PathType(),
                     help = "Video file to analyze.")
 
 parser.add_argument('target_dir', type = PathType(type='dir', exists = None),
                     help = "Output folder for processed videos.")
 
-results = parser.parse_args()
-print(results)
+def main(args=None):
+    results = parser.parse_args(args)
+    print(results)
+
+    # -l implementation.
+    logging.getLogger().setLevel(results.log_level)
+    logging.info("Passed args: %r" % args)
+
+    try:
+        results.operation(results)
+    except KeyboardInterrupt:
+        logging.exception(sys.exc_value)
+        parser.exit(130, sys.exc_value)
+    except:
+        # Any error, including Keyboard, print something and exit.
+        logging.error(sys.exc_value)
+        parser.error(sys.exc_value)
+        
+
+if __name__ == '__main__':
+    main()
