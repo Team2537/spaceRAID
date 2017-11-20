@@ -4,6 +4,11 @@
 Examples/
 Results/
 frame_log.txt
+
+# Tesseract Data Files
+*.bin
+tesseract_opencl_profile_devices.dat
+
 # Python related ignore stuff.
 # Byte-compiled / optimized / DLL files
 __pycache__/
