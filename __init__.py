@@ -34,6 +34,20 @@ run       Do parse, finish, and probably upload. Run will be done if no
 """
 __version__ = "1.0"
 
+# WARNING, this is not stable unless the current directory is the directory
+# with this file.
+import os # Needed anyway
+import inspect
+
+try:
+    assert os.path.samefile(
+        os.path.dirname(inspect.getfile(inspect.currentframe())),
+        os.getcwd())
+except:
+    print("File %r" % os.path.dirname(inspect.getfile(inspect.currentframe())))
+    print("pwd  %r" % os.getcwd())
+    raise
+
 import sys
 import logging
 import argparse
@@ -62,7 +76,6 @@ import video_loader # This should be removed at some point.
 
 # Added callable function, instead of __call__ check, and changed err to
 # ArgumentTypeError. Also fixed os.path.sympath reference to os.path.islink.
-import os
 from argparse import ArgumentTypeError
 
 class PathType(object):
