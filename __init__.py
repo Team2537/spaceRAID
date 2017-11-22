@@ -56,6 +56,7 @@ logging.basicConfig(
     format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
 
 import find_matches
+import process_frames
 import video_loader # This should be removed at some point.
 
 # ==============
@@ -282,8 +283,9 @@ def main(args=None):
         parser.exit(130, sys.exc_value)
     except:
         # Any error, including Keyboard, print something and exit.
-        logging.error(sys.exc_value)
-        parser.error(sys.exc_value)
+        err = sys.exc_value
+        logging.exception(err)
+        parser.error(err)
         
 
 if __name__ == '__main__':
