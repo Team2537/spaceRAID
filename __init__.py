@@ -279,13 +279,12 @@ def main(args=None):
     try:
         results.operation(results)
     except KeyboardInterrupt:
-        logging.exception(sys.exc_value)
-        parser.exit(130, sys.exc_value)
+        logging.exception(sys.exc_info()[1])
+        parser.exit(130, sys.exc_info()[1])
     except:
         # Any error, including Keyboard, print something and exit.
-        err = sys.exc_value
-        logging.exception(err)
-        parser.error(err)
+        logging.exception(sys.exc_info()[1])
+        parser.error(sys.exc_info()[1])
         
 
 if __name__ == '__main__':
