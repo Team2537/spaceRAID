@@ -136,7 +136,8 @@ class PathType(object):
                 raise ArgumentTypeError("parent directory does not exist: '%s'" % p)
 
         return string
-
+    
+QUITE_UNKNOWN_ERROR = False
 #################################### Parser ####################################
 parser = argparse.ArgumentParser(prog = "spaceraid")
 
@@ -149,14 +150,15 @@ parser.add_argument("-v", "--verbose", dest = "log_level", action="store_const",
 
 parser.set_defaults(log_level = logging.ERROR)
 
-parser.add_argument("--version", action="version", version="%(prog)s " + __version__)
+parser.add_argument("--version",action="version",version="%(prog)s "+__version__)
 
 parser.add_argument("-d", "--dryrun", action = "store_true", default = False,
                     help = "Don't read any files or access the internet. "
                            "List what would be done.")
 
-parser.add_argument("-l","--log","--log_file",type=PathType(exists=None),default='-',
-                    help = "Logging file for all debug info from logging.")
+parser.add_argument("-l", "--log", "--log_file", type = PathType(exists = None),
+                    default='-', help =
+                    "Logging file for all debug info from logging.")
 
 # Subparsers / Operations
 subparsers = parser.add_subparsers(
@@ -196,7 +198,7 @@ def parse(namespace):
 
             try:
                 video = video_loader.Video(f)
-                
+
                 results = find_matches.scan_video(video)
                 # Close the windows.
                 process_frames.deinit()
@@ -262,7 +264,7 @@ def test(namespace):
 parser_test.set_defaults(operation = test)
 del parser_test
 ################################################################################
-parser.add_argument('source_files', nargs='+', action = "append", type= PathType(),
+parser.add_argument('source_files',nargs='+',action ="append",type=PathType(),
                     help = "Video file to analyze.")
 
 parser.add_argument('target_dir', type = PathType(type='dir', exists = None),
@@ -270,22 +272,29 @@ parser.add_argument('target_dir', type = PathType(type='dir', exists = None),
 
 def main(args=None):
     results = parser.parse_args(args)
+
+    # Flatten the source_files varible to just be a list of files.
+    # Not a concentric list of files.
+    results.source_files = sum(results.source_files, [])
     print(results)
 
     # -l implementation.
     logging.getLogger().setLevel(results.log_level)
     logging.info("Passed args: %r" % args)
-
+    
     try:
         results.operation(results)
     except KeyboardInterrupt:
-        logging.exception(sys.exc_info()[1])
+        logging.info(sys.exc_info()[1])
         parser.exit(130, sys.exc_info()[1])
     except:
         # Any error, including Keyboard, print something and exit.
         logging.exception(sys.exc_info()[1])
-        parser.error(sys.exc_info()[1])
-        
+        if QUITE_UNKNOWN_ERROR:
+            parser.error(sys.exc_info()[1])
+        else:
+            # Don't give a nice clean exit code. There has been an error, crash.
+            raise
 
 if __name__ == '__main__':
-    main()
+    main() #main(['parse', 'example_video.mp4', path, 'example_folder'])
