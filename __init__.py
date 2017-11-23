@@ -290,12 +290,12 @@ def main(args=None):
     # -l implementation.
     logging.getLogger().setLevel(results.log_level)
     logging.info("Passed args: %r" % args)
-    
+
     try:
         results.operation(results)
     except KeyboardInterrupt:
-        logging.info(sys.exc_info()[1])
-        parser.exit(130, sys.exc_info()[1])
+        logging.info("Keyboard Interrupt")
+        parser.exit(130, "Keyboard Interrupt")
     except:
         # Any error, including Keyboard, print something and exit.
         logging.exception(sys.exc_info()[1])
