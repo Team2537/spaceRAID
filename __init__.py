@@ -285,7 +285,7 @@ def main(args=None):
     # Flatten the source_files varible to just be a list of files.
     # Not a concentric list of files.
     results.source_files = sum(results.source_files, [])
-    print(results)
+    pprint(vars(results))
 
     # -l implementation.
     logging.getLogger().setLevel(results.log_level)
@@ -306,4 +306,4 @@ def main(args=None):
             raise
 
 if __name__ == '__main__':
-    main() #main(['parse', 'example_video.mp4', path, 'example_folder'])
+    main() #main(['parse', '-', '-', 'example_folder'])
