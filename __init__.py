@@ -273,8 +273,132 @@ def test(namespace):
 parser_test.set_defaults(operation = test)
 del parser_test
 ################################################################################
-parser.add_argument('source_files',nargs='+',action ="append",type=PathType(),
+
+# Disable these arguments.
+# Though it works for the help menu, this is not functional.
+# The problem is that "source_files" can not be an adjustable number of
+# arguments. Because of the regex expressions set up by
+# ArgumentParser._get_nargs_pattern() and executed in
+# ArgumentParser._match_arguments_partial() would give all but the first
+# specified files for "source_files" to the subparser for the subcommand.
+#
+# Specifically, the problem is in ArgumentParser._get_nargs_pattern() line,
+# argparse (lineno 2183)
+#2181           # allow one argument followed by any number of options or arguments
+#2182           elif nargs == PARSER:
+#2183 ->            nargs_pattern = '(-*A[-AO]*)'
+#2184
+# The problem here is that the parser regex expression is greedy. It will
+# consume all arguments that are not reserved (like if source_files had nargs=2)
+# for the subparser when the expression is evaluated at
+# ArgumentParser._match_arguments_partial() (lineno 2047).
+#
+# Spefically, with "source_files" set to "+", the pattern in
+# ArgumentParser._match_arguments_partial()
+# pattern = '(-*A[-AO]*)(-*A[A-]*)(-*A-*)'
+# arg_strings_pattern = 'AAAA'
+# re.match(pattern, arg_strings_pattern).groups() -> ('AA', 'A', 'A')
+#
+# And for "source_files" is set to 2, the pattern in
+# ArgumentParser._match_arguments_partial()
+# pattern = '(-*A[-AO]*)(-*A-*A-*)(-*A-*)'
+# arg_strings_pattern = 'AAAA'
+# re.match(pattern, arg_strings_pattern).groups() -> ('A', 'AA', 'A')
+#
+# A possible fix would be to make a subclass of
+# ArgumentParser._get_nargs_pattern() that made the parser pattern non-greedy.
+# While this solution would solve this problem, it would give unexpected
+# behavior if non-positional arguments were specified after a subparser.
+# Additionally, this does not completely solve my problem because it really is
+# not the best set-up for having these arguments anyway. For example, neither
+# upload, nor test would make the best use of these arguments as neither would
+# have an output and test my want a folder for an input. Additionally, it may
+# make more since for the test's specific arguments to be entered AFTER the
+# input file.
+#
+# The other possible fix is to either hardcode the files into the majority of
+# the subparsers, or use the parents method to add them quickly to multiple
+# parsers. The parents may work, but I would need to do more testing to
+# determine if they actually fill allow for the positional and non-positional
+# arguments to be specified in a logical order. The hardcode options would
+# most definitely work, but would require code duplication.
+#
+# The real problem with either of these solutions is it means that no mention
+# of how to specify arguments it given automatically in the help or usage.
+# Here is example of what the help would look like with parents.
+#
+# >>> parent = argparse.ArgumentParser(add_help=False)
+# >>> parent.add_argument('files', nargs = "+", action = "append")
+# _AppendAction(option_strings=[], dest='files', nargs='+', const=None,
+# default=None, type=None, choices=None, help=None, metavar=None)
+# >>> subparsers = parser.add_subparsers()
+# >>> subparsers.add_parser('test', parents = [parent])
+# ArgumentParser(prog=' test', usage=None, description=None, version=None,
+# formatter_class=<class 'argparse.HelpFormatter'>, conflict_handler='error',
+# add_help=True)
+# >>> parser.parse_args(['test', 'test1', 'test2'])
+# Namespace(files=[['test1', 'test2']])
+# >>> parser.parse_args(['test', '-h', 'test1', 'test2'])
+# usage:  test [-h] files [files ...]
+#
+# positional arguments:
+#   files
+#
+# optional arguments:
+#   -h, --help  show this help message and exit
+# >>> parser.parse_args(['-h'])
+# usage: [-h] {test} ...
+#
+# positional arguments:
+#   {test}
+#
+# optional arguments:
+#   -h, --help  show this help message and exit
+#
+# So in-addition to these methods, rewriting of the help formatter would be
+# required to make these solutions work. Otherwise, I guess I could live with
+# the rather unhelpful help menu and just go let the thing work.
+#
+# That said, the nice simple solution that will work for now is to not use
+# differing number of arguments in for the source files. By restricting
+# nargs to 1, everything will work find for now.
+#
+# Some related problems are detailed here: https://bugs.python.org/issue9338
+#
+# Also, just as some debugging infomation, here are all of the places that the
+# args was checked in argparse when this was run. This was done by overriding
+# the __eq__ method on the narg varible. It is possible that some other test
+# was used that was not caught, but it looks unlikely.
+# Execution pattern of nargs = "+"
+# argparse.py  2166 Compared eq + to      ? (False).
+# argparse.py  2170 Compared eq + to      * (False).
+# argparse.py  2174 Compared eq + to      + (True).
+# argparse.py  2202 Compared eq + to   A... (False).
+# argparse.py  2202 Compared eq + to    ... (False).
+# argparse.py  2229 Compared eq + to   None (NotImplemented).
+# argparse.py  2229 Compared eq + to      ? (False).
+# argparse.py  2235 Compared eq + to    ... (False).
+# argparse.py  2239 Compared eq + to   A... (False).
+# TEST -
+# TEST example_folder
+# TEST -
+# argparse.py   577 Compared eq + to      ? (False).
+# argparse.py   579 Compared eq + to      * (False).
+# argparse.py   581 Compared eq + to      + (True).
+# argparse.py   577 Compared eq + to      ? (False).
+# argparse.py   579 Compared eq + to      * (False).
+# argparse.py   581 Compared eq + to      + (True).
+# argparse.py   577 Compared eq + to      ? (False).
+# argparse.py   579 Compared eq + to      * (False).
+# argparse.py   581 Compared eq + to      + (True).
+# argparse.py   577 Compared eq + to      ? (False).
+# argparse.py   579 Compared eq + to      * (False).
+# argparse.py   581 Compared eq + to      + (True).
+
+parser.add_argument('source_files',nargs=1,action ="append",
+                    type=PathType(dash_ok=False), # Turns out opencv won't do -.
                     help = "Video file to analyze.")
+# All this fuss, for this one line.
 
 parser.add_argument('target_dir', type = PathType(type='dir', exists = None),
                     help = "Output folder for processed videos.")
