@@ -49,6 +49,7 @@ except:
     raise
 
 import sys
+import json
 import logging
 import argparse
 
@@ -147,6 +148,7 @@ class PathType(object):
         return string
 
 QUITE_UNKNOWN_ERROR = False
+MATCH_JSON_FILE = "match_results.json"
 #################################### Parser ####################################
 parser = argparse.ArgumentParser(prog = "spaceraid")
 
@@ -188,6 +190,28 @@ parser_run = subparsers.add_parser("run", help = \
 def run(namespace):
     """Run operation for spaceraid."""
     raise NotImplementedError("Haven't run finish yet.")
+    try:
+        process_frames.init()
+
+        for f in namespace.source_files:
+            if not os.path.isfile(f):
+                logging.error("File %r does not exists." % f)
+
+            try:
+                video = video_loader.Video(f)
+
+                results = find_matches.scan_video(video)
+                # Close the windows.
+                video_loader.close_image()
+                timings = find_matches.time_video(results)
+                find_matches.write_files(video, timings)
+            except ValueError:
+                # The file stopped existing. Error.
+                raise IOError("Video stopped existing while opening.")
+            finally:
+                video_loader.close_image()
+    finally:
+        process_frames.deinit() # Close the threading even on error.
 
 parser_run.set_defaults(operation = run)
 
@@ -207,19 +231,30 @@ def parse(namespace):
 
             try:
                 video = video_loader.Video(f)
-
+                global results
                 results = find_matches.scan_video(video)
+                pprint(results)
                 # Close the windows.
-                process_frames.deinit()
-                timings = find_matches.time_video(results)
-                find_matches.write_files(video, timings)
+                video_loader.close_image()
+                # Write the results to file.
+                out = namespace.target_dir
+                if not os.path.exists(out) and out.endswith("/"):
+                    # Make the directory.
+                    os.mkdir(out)
+                    f = os.path.join(out, MATCH_JSON_FILE)
+                elif os.path.isdir(out):
+                    # Then store the file at "match_results.json"
+                    f = os.path.join(out, MATCH_JSON_FILE)
+                with open(out, "w") as open_out_file:
+                    # Without other data, use str to serialize.
+                    json.dump(results,open_out_file,default=str,indent=True)
             except ValueError:
                 # The file stopped existing. Error.
                 raise IOError("Video stopped existing while opening.")
             finally:
                 video_loader.close_image()
     finally:
-        process_frames.deinit()
+        process_frames.deinit() # Close the threading even on error.
 
 parser_parse.set_defaults(operation = parse)
 
@@ -400,7 +435,8 @@ parser.add_argument('source_files',nargs=1,action ="append",
                     help = "Video file to analyze.")
 # All this fuss, for this one line.
 
-parser.add_argument('target_dir', type = PathType(type='dir', exists = None),
+parser.add_argument('target_dir',type=PathType(type=('dir','file').__contains__,
+                                               dash_ok=True, exists = None),
                     help = "Output folder for processed videos.")
 
 def main(args=None):
