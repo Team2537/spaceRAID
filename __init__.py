@@ -55,9 +55,18 @@ import argparse
 logging.basicConfig(
     format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
 
-import find_matches
-import process_frames
-import video_loader # This should be removed at some point.
+try:
+    # Cv2 and ffmpeg can be broken.
+    import find_matches
+    import process_frames
+    import video_loader # This should be removed at some point.
+except ImportError:
+    sys.stderr.write(
+        "ImportError, cv2 or ffmpeg are not installed or corrupted.\n"
+        "Please reinstall.\n")
+    exit(1)
+
+from pprint import pprint
 
 # ==============
 # Type classes
@@ -136,7 +145,7 @@ class PathType(object):
                 raise ArgumentTypeError("parent directory does not exist: '%s'" % p)
 
         return string
-    
+
 QUITE_UNKNOWN_ERROR = False
 #################################### Parser ####################################
 parser = argparse.ArgumentParser(prog = "spaceraid")
