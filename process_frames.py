@@ -306,8 +306,9 @@ class Name_Result(object):
             return cmp(int(self.match_type[-1]), int(obj.match_type[-1]))
         except AttributeError:
             # obj did not have some attribute.
-            raise TypeError("obj for cmp was of type %s, not Name_Result." %
-                            type(obj))
+##            raise TypeError("obj for cmp was of type %s, not Name_Result." %
+##                            type(obj))
+            return NotImplemented
 
 #https://stackoverflow.com/questions/390250/elegant-ways-to-support-equivalence-equality-in-python-classes
     def __hash__(self):
