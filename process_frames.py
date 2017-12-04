@@ -92,8 +92,8 @@ __author__ = "Matthew Schweiss"
 __version__ = "1.0"
 
 REG_NAME_ENLARGE = 5
-REG_TIME_ENLARGE = 20
-EXT_TIME_ENLARGE = 14
+REG_TIME_ENLARGE = 13.1 #20
+EXT_TIME_ENLARGE = 14 #14
 
 DEBUG = True
 ALLOW_FAILURE = True

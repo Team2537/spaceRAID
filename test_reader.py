@@ -99,7 +99,7 @@ class Image_Transcript():
 
     def _parse(self, line):
         """Parse the line into a readable form."""
-        logging.info("Read line %r." % line)
+        logging.debug("Read line %r." % line)
         line = line.strip()
         if not line or line[:1] == '#': # Comment, ignore line.
             return None
@@ -408,6 +408,9 @@ def test(src, VIDEO_WINDOW = VIDEO_WINDOW, LOGGING_LEVEL = LOGGING_LEVEL):
             frame_time_start = time.time() # Start Timing
             
             read_name, read_time = process_frames.read_image(frame)
+            
+            # Convert to string from result type.
+            read_name, read_time = str(read_name), str(read_time)
 
             frame_time_stop = time.time() # Stop Timing
             
@@ -488,23 +491,31 @@ def test(src, VIDEO_WINDOW = VIDEO_WINDOW, LOGGING_LEVEL = LOGGING_LEVEL):
             print(" Average Time:\tN/A seconds")
         results.total_time = exc_time
         print("   Total Time:\t%.3f seconds" % results.total_time)
+        print("    Enlargement   Similarities    Perfect Matches")
+        print("Name Enlarge %s" % process_frames.REG_NAME_ENLARGE)
+        print("Time Enlarge %s" % process_frames.REG_TIME_ENLARGE)
+        print("Extract Time %s" % process_frames.EXT_TIME_ENLARGE)
+        ##print(("Reg %14.1fx"     "%14.2f%%"        "%14.2f%%") % (
+            
 
 def main(args = None, VIDEO_WINDOW=VIDEO_WINDOW,LOGGING_LEVEL=LOGGING_LEVEL):
     # Get test Information
-    test_num = easygui.indexbox(
-        msg="Hello! What do you want to test?",
-        choices=("process_frames.read_frame()", "find_matches.read_moment()")
-        )
-
-    if   test_num == 0:
-        test_func = process_frames.read_image
-
-    elif test_num == 1:
-        test_func = find_matches.read_moment
-
-    if test_num is None:
-        # Exit
-        return
+##    test_num = easygui.indexbox(
+##        msg="Hello! What do you want to test?",
+##        choices=("process_frames.read_frame()", "find_matches.read_moment()")
+##        )
+##
+##    if   test_num == 0:
+##        test_func = process_frames.read_image
+##
+##    elif test_num == 1:
+##        test_func = find_matches.read_moment
+##
+##    if test_num is None:
+##        # Exit
+##        return
+    test_num = 0
+    test_func = process_frames.read_image
 
     # Get VIDEO_WINDOW if needed.
     if VIDEO_WINDOW is None:
