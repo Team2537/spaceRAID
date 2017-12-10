@@ -60,7 +60,11 @@ except NameError:
         basestring = str
 
 # For more consice repr
-from repr import repr
+try:
+    from repr import repr
+except ImportError:
+    # reprlib in python 3
+    from reprlib import repr
 
 LOGGING_LEVEL = None
 VIDEO_WINDOW = None

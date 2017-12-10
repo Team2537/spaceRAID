@@ -149,14 +149,14 @@ def keep_box(contour):
     # probably not a real character
     if w_ / h_ < 0.1 or w_ / h_ > 10:
         if DEBUG:
-            print "\t Rejected because of shape: (" + str(xx) + "," + str(yy) + "," + str(w_) + "," + str(h_) + ")" + \
-                  str(w_ / h_)
+            print("\t Rejected because of shape: (" + str(xx) + "," + str(yy) + "," + str(w_) + "," + str(h_) + ")" + \
+                  str(w_ / h_))
         return False
     
     # check size of the box
     if ((w_ * h_) > ((img_x * img_y) / 5)) or ((w_ * h_) < 15):
         if DEBUG:
-            print "\t Rejected because of size"
+            print("\t Rejected because of size")
         return False
 
     return True
@@ -164,25 +164,25 @@ def keep_box(contour):
 
 def include_box(index, h_, contour):
     if DEBUG:
-        print str(index) + ":"
+        print(str(index) + ":")
         if is_child(index, h_):
-            print "\tIs a child"
-            print "\tparent " + str(get_parent(index, h_)) + " has " + str(
-                count_children(get_parent(index, h_), h_, contour)) + " children"
-            print "\thas " + str(count_children(index, h_, contour)) + " children"
+            print("\tIs a child")
+            print("\tparent " + str(get_parent(index, h_)) + " has " + str(
+                count_children(get_parent(index, h_), h_, contour)) + " children")
+            print("\thas " + str(count_children(index, h_, contour)) + " children")
 
     if is_child(index, h_) and count_children(get_parent(index, h_), h_, contour) <= 2:
         if DEBUG:
-            print "\t skipping: is an interior to a letter"
+            print("\t skipping: is an interior to a letter")
         return False
 
     if count_children(index, h_, contour) > 2:
         if DEBUG:
-            print "\t skipping, is a container of letters"
+            print("\t skipping, is a container of letters")
         return False
 
     if DEBUG:
-        print "\t keeping"
+        print("\t keeping")
     return True
 
 def extract_image(orig_img, DEBUG = DEBUG):
@@ -196,7 +196,7 @@ def extract_image(orig_img, DEBUG = DEBUG):
     img_x = len(img[0])
 
     if DEBUG:
-        print "Image is " + str(len(img)) + "x" + str(len(img[0]))
+        print("Image is " + str(len(img)) + "x" + str(len(img[0])))
 
     #Split out each channel
     blue, green, red = cv2.split(img)
@@ -225,7 +225,7 @@ def extract_image(orig_img, DEBUG = DEBUG):
     # if it's one we care about
     for index_, contour_ in enumerate(contours):
         if DEBUG:
-            print "Processing #%d" % index_
+            print("Processing #%d" % index_)
 
         x, y, w, h = cv2.boundingRect(contour_)
 
@@ -257,7 +257,7 @@ def extract_image(orig_img, DEBUG = DEBUG):
 
         fg_int /= len(contour_)
         if DEBUG:
-            print "FG Intensity for #%d = %d" % (index_, fg_int)
+            print("FG Intensity for #%d = %d" % (index_, fg_int))
 
         # Find the intensity of three pixels going around the
         # outside of each corner of the bounding box to determine
@@ -291,7 +291,7 @@ def extract_image(orig_img, DEBUG = DEBUG):
         bg_int = np.median(bg_int)
 
         if DEBUG:
-            print "BG Intensity for #%d = %s" % (index_, repr(bg_int))
+            print("BG Intensity for #%d = %s" % (index_, repr(bg_int)))
 
         # Determine if the box should be inverted
         if fg_int >= bg_int:
@@ -307,7 +307,7 @@ def extract_image(orig_img, DEBUG = DEBUG):
             for y in range(y_, y_ + height):
                 if y >= img_y or x >= img_x:
                     if DEBUG:
-                        print "pixel out of bounds (%d,%d)" % (y, x)
+                        print("pixel out of bounds (%d,%d)" % (y, x))
                     continue
                 if ii(x, y) > fg_int:
                     new_image[y][x] = bg
@@ -329,14 +329,14 @@ def main(args=None):
         args = sys.argv
         
     if len(args) != 3:
-        print "%s input_file output_file" % args[0]
+        print("%s input_file output_file" % args[0])
         sys.exit()
     else:
         input_file = args[1]
         output_file = args[2]
         
     if not os.path.isfile(input_file):
-        print "No such file '%s'" % input_file
+        print("No such file '%s'" % input_file)
         sys.exit()
 
     # Load the image
