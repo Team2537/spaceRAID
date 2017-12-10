@@ -61,6 +61,7 @@ try:
     import find_matches
     import process_frames
     import video_loader # This should be removed at some point.
+    import test_reader
 except ImportError:
     sys.stderr.write(
         "ImportError, cv2 or ffmpeg are not installed or corrupted.\n"
@@ -221,7 +222,6 @@ parser_parse = subparsers.add_parser("parse", help = "Analyze the video(s).")
 
 def parse(namespace):
     """Parse operation for spaceraid."""
-##    raise NotImplementedError("Haven't made parse yet.")
     try:
         process_frames.init()
 
