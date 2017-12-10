@@ -4,7 +4,6 @@ import os
 import sys
 import math
 import queue
-import ffmpeg
 import logging
 import subprocess
 

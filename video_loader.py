@@ -29,7 +29,7 @@ except NameError:
 # So don't bother the redundancy.
 
 import cv2
-import ffmpeg
+#import ffmpeg
 
 def load_image(path):
     """Load the image from file."""
