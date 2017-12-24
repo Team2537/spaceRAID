@@ -98,7 +98,8 @@ class PathType(object):
                 None: don't care
            type: file, dir, symlink, None, or a function returning True for valid paths
                 None: don't care
-           dash_ok: whether to allow "-" as stdin/stdout'''
+           dash_ok: whether to allow "-" as stdin/stdout
+        '''
 
         assert exists in (True, False, None)
         assert type in ('file','dir','symlink',None) or callable(type)
@@ -149,7 +150,7 @@ class PathType(object):
         return string
 
 QUITE_UNKNOWN_ERROR = False
-MATCH_JSON_FILE = "match_results.json"
+MATCH_JSON_FILE = "match_results.tsv"
 #################################### Parser ####################################
 parser = argparse.ArgumentParser(prog = "spaceraid")
 
