@@ -66,7 +66,7 @@ except ImportError:
     sys.stderr.write(
         "ImportError, cv2 or ffmpeg are not installed or corrupted.\n"
         "Please reinstall.\n")
-    exit(1)
+    sys.exit(1)
 
 from pprint import pprint
 
