@@ -459,11 +459,9 @@ def main(args=None):
     except:
         # Any error, including Keyboard, print something and exit.
         logging.exception(sys.exc_info()[1])
-        if QUITE_UNKNOWN_ERROR:
-            parser.error(sys.exc_info()[1])
-        else:
-            # Don't give a nice clean exit code. There has been an error, crash.
-            raise
+
+        # Don't give a nice clean exit code. There has been an error, crash.
+        raise
 
 if __name__ == '__main__':
     main() #main(['parse', '-', '-', 'example_folder'])
