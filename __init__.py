@@ -41,8 +41,8 @@ import inspect
 
 try:
     assert os.path.samefile(
-        os.path.dirname(inspect.getfile(inspect.currentframe())),
-        os.getcwd())
+        os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe()))),
+                        os.getcwd())
 except:
     print("File %r" % os.path.dirname(inspect.getfile(inspect.currentframe())))
     print("pwd  %r" % os.getcwd())
@@ -149,8 +149,7 @@ class PathType(object):
 
         return string
 
-QUITE_UNKNOWN_ERROR = False
-MATCH_JSON_FILE = "match_results.tsv"
+MATCH_JSON_FILE = "match_results.json"
 #################################### Parser ####################################
 parser = argparse.ArgumentParser(prog = "spaceraid")
 
