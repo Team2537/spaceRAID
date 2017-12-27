@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """Takes the video feed and looks for signs that a match is there."""
 import os
 import sys
@@ -66,6 +66,9 @@ def read_moment(video, frame_count = None):
     """Read text at the frame number (frames from start of video).
     If frame_count is less than 0, read from current video position.
     """
+    # In python3, None < 0 throws an error, so make sure it is not None.
+    if frame_count is None:
+        frame_count = -1
     # For different MOMENT_MINUMUM_FRAMES
     # 1: Take next frame.
     # 2: Take 1 previous frame and next 1.
@@ -286,7 +289,7 @@ def write_files(video, timings):
         while output.poll() is None:
             output.stdout.flush()
             x = output.stdout.readline()
-            if x: logging.debug("ffmepg %s" % x.rstrip("\n"))
+            if x: logging.debug("ffmepg %r" % x)
             time.sleep(.1)
         print("Finished with status %s" % output.poll())
 

@@ -479,7 +479,9 @@ def smart_read_name(name_text):
         num2 = fix_number(num2)
 
         # num1 should be less than num2, otherwise num2 is wrong.
-        if num1 > num2:
+        # If num1 is None, this test means nothing, but in python3 it would
+        # throw an error.
+        if num1 != None and num1 > num2:
             num2 = None
 
         return Name_Result(name_text_template, num1, num2)
@@ -491,7 +493,7 @@ def smart_read_name(name_text):
 #*******************************************************************************
 
 def smart_read_time(reg_time, ext_time):
-    """Tead the time smartly. Post-Processing."""
+    """Read the time smartly. Post-Processing."""
     # First, remove spaces to make sure everything is good.
     reg_time, ext_time = reg_time.strip(), ext_time.strip()
     # If the extracted value is blank then this is blank unless
