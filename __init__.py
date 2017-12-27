@@ -237,17 +237,18 @@ def parse(namespace):
                 # Close the windows.
                 video_loader.close_image()
                 # Write the results to file.
-                out = namespace.target_dir
-                if not os.path.exists(out) and out.endswith("/"):
+                out_dir = namespace.target_dir
+                if not os.path.exists(out_dir) and out.endswith("/"):
                     # Make the directory.
-                    os.mkdir(out)
-                    f = os.path.join(out, MATCH_JSON_FILE)
-                elif os.path.isdir(out):
+                    os.mkdir(out_dir)
+                    logging.debug("Created folder %r" % out_dir)
+                    f = os.path.join(out_dir, MATCH_JSON_FILE)
+                elif os.path.isdir(out_dir):
                     # Then store the file at "match_results.json"
-                    f = os.path.join(out, MATCH_JSON_FILE)
-                with open(out, "w") as open_out_file:
+                    f = os.path.join(out_dir, MATCH_JSON_FILE)
+                with open(f, "w") as out_file:
                     # Without other data, use str to serialize.
-                    json.dump(results,open_out_file,default=str,indent=True)
+                    json.dump(results, out_file, default=str, indent=True)
             except ValueError:
                 # The file stopped existing. Error.
                 raise IOError("Video stopped existing while opening.")
