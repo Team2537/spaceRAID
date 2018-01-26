@@ -143,9 +143,9 @@ class PathType(object):
 
             p = os.path.dirname(os.path.normpath(string)) or '.'
             if not os.path.isdir(p):
-                raise ArgumentTypeError("parent path is not a directory: '%s'" % p)
+                raise ArgumentTypeError("parent path is not a directory: %r" % p)
             elif not os.path.exists(p):
-                raise ArgumentTypeError("parent directory does not exist: '%s'" % p)
+                raise ArgumentTypeError("parent directory does not exist: %r" % p)
 
         return string
 
@@ -440,7 +440,7 @@ parser.add_argument('target_dir',type=PathType(type=('dir','file').__contains__,
                                                dash_ok=True, exists = None),
                     help = "Output folder for processed videos.")
 
-def main(args=None):
+def main(args = None):
     results = parser.parse_args(args)
 
     # Flatten the source_files varible to just be a list of files.
@@ -465,4 +465,5 @@ def main(args=None):
         raise
 
 if __name__ == '__main__':
-    main() #main(['parse', '-', '-', 'example_folder'])
+    #main(['parse', '-', '-', 'example_folder'])
+    #main()

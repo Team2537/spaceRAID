@@ -280,7 +280,7 @@ def write_files(video, timings):
 
         # Create and processing command and launch!
         command = ffmpeg_command(video.path, start_time, stop_time, output_file)
-        print("Command: %s %s"%(command[:0],' '.join(map(repr,command[1:]))))
+        print("Command: %s" % subprocess.list2cmdline(command))
         output=subprocess.Popen(command,
                                 stdout=subprocess.PIPE,
                                 stderr=subprocess.STDOUT)
