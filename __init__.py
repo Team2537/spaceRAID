@@ -50,8 +50,11 @@ except:
 
 import sys
 import json
+import time
+import xattr
 import logging
 import argparse
+import subprocess
 
 logging.basicConfig(
     format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
@@ -148,6 +151,29 @@ class PathType(object):
                 raise ArgumentTypeError("parent directory does not exist: %r" % p)
 
         return string
+
+# For finish path walking.
+# Partially from https://stackoverflow.com/questions/229186/os-walk-without-digging-into-directories-below
+# Edited.
+def walklevel(path, depth = 1):
+    """It works just like os.walk, but you can pass it a level parameter
+       that indicates how deep the recursion will go.
+       If depth is -1 (or less than 0), the full depth is walked.
+    """
+    # if depth is negative, just walk
+    if depth < 0:
+        for root, dirs, files in os.walk(path):
+            yield root, dirs, files
+
+    # path.count works because is a file has a "/" it will show up in the list
+    # as a ":"
+    path = path.rstrip(os.path.sep)
+    num_sep = path.count(os.path.sep)
+    for root, dirs, files in os.walk(path):
+        yield root, dirs, files
+        num_sep_this = root.count(os.path.sep)
+        if num_sep + depth <= num_sep_this:
+            del dirs[:]
 
 MATCH_JSON_FILE = "match_results.json"
 #################################### Parser ####################################
@@ -266,18 +292,157 @@ del parser_parse # No need to keep varible.
 #     green and not red. Default is green. Yellow is will                      #
 #     process videos with yellow flags but not green.                          #
 
-parser_finish = subparsers.add_parser("finish", help = (
-    "Fixup the output video files. Add intro and fix name."))
+parser_finish = subparsers.add_parser("finish", help =
+    "Fixup the output video files. Add intro and fix name.")
 
 parser_finish.add_argument(
-    "-t","--tags",choices=("all","yellow","green"),default = "green",
+    "-t","--tags",choices=("All","Yellow","Green"),default = "Green",
     help = ("Look at the eXtra tags and only finish tags tagged with"
             "green and not red. Default is green. Yellow is will"
             "process videos with yellow flags but not green."))
+# Need to allow folders for this to be of use.
+parser_finish.add_argument("-r","--recurse",action="store_true",default=False,
+                           help="Recursively apply to videos in the directory.")
+
+# A setable depth for recurse, implies -r
+parser_finish.add_argument("-d","--depth",action="store",type=int,default=None,
+                           help="Recursize depth of the specified folders.\n"
+                               "Implies -r")
+def ffmpeg_command(text, output):
+    # Command to finish the video.
+    return ['/usr/local/Cellar/ffmpeg/3.4.1/bin/ffmpeg',
+            '-n', # Don't overwrite files.
+            '-hide_banner', # Just hide the banner, don't show that.
+            # This line appears to break everything.
+            '-loglevel', 'warning', # Less output
+            '-i', "Video Intro.mov", # Get Template Intro
+            '-vf', # Add a video filter for the text.
+            
+            r'drawtext=fontfile=/Library/Fonts/Trebuchet\ MS.ttf: ' # Font
+            'text=%r: ' % text + # The changing text.
+            "enable='between(t,3,9)':" # Show only from 3s to 9s.
+            'fontcolor=white:' # White text
+            'fontsize=36:' # 36 Point Font.
+            'x=text_w/16:' # Text is left justified on the left.
+            'y=(h-text_h)/2', # Text is center justified vertically.
+
+            output]
 
 def finish(namespace):
     """Finish operation for spaceraid."""
-    raise NotImplementedError("Haven't made finish yet.")
+    # Take the video files in the given directory and add the intro to the
+    # video, creating the specific intro.
+    if not namespace.source_files:
+        raise NotImplementedError("Haven't made finish yet.")
+
+    process_files = [] # Files that need to be processed.
+
+    # Set the depth of the walk.
+    if namespace.depth != None:
+        depth = namespace.depth
+    elif namespace.recurse:
+        depth = -1
+    else:
+        depth = 0
+
+    # Walk through all of the given files.
+    for f in namespace.source_files:
+        # If a file is given, just use that.
+        if os.path.isfile(f):
+            process_files.append(f)
+        # Otherwise, depends on recursive and depth.
+        elif os.path.isdir(f):
+            for root, dirs, files in walklevel(namespace.source_files, depth):
+                process_files.extend(files)
+
+    # Filter through only the files with the tags.
+    if namespace.tags == "All":
+        # If "All" videos,
+        # process_files is filtered_files.
+        filtered_files = process_files
+    else:
+        filtered_files = []
+        # Ok, now work of process_files to make this.
+        # Depending on "tags", only read some of the videos.
+        for f in process_files:
+            try:
+                tag = xattr.getxattr(f, 'com.apple.metadata:_kMDItemUserTags')
+            except OSError:
+                # There is no tag com.apple.metadata:_kMDItemUserTags.
+                tag = b''
+            except IOError:
+                # File does not exist. (Using IOError for python2 compatability.)
+                logging.error(
+                    "File %r did not exist when extended attributes were accessed."%f)
+                # Just keep going with other files.
+                continue
+
+            # Now, 'tag' still contains a lot of extra data that we need to remove.
+            # The effective "tag" is really the word "Red", "Green", or "Yellow",
+            # whichever one shows up LAST in the tag.
+
+            # I know this can be done with regex, but it would be more complicated.
+            red_index   = tag.rfind(b'Red')
+            green_index = tag.rfind(b'Green')
+            yellow_index= tag.rfind(b'Yellow')
+
+            index = max(red_index, yellow_index, green_index)
+
+            if index == -1:
+                # No tags.
+                continue
+            elif index == green_index:
+                # Use this video.
+                filtered_files.append(f)
+            elif index == yellow_index and 'Y' == namespace.tags[0]:
+                # If the tag is Yellow and so is the preset, use video.
+                filtered_files.append(f)
+            # Any other situation, don't include video.
+
+    # Now take filtered files and process all of them.
+##    import pprint
+##    print('#' * 80)
+##    pprint(filtered_files)
+##    raise NotImplementedError("Haven't made finish yet.")
+##
+##    command = (# FIRST, full path to ffmpeg.
+##        '''/usr/local/Cellar/ffmpeg/3.4.1/bin/ffmpeg '''
+##        # Load the 9 second intro.
+##        '''-i "Video Intro.mov" '''
+##        # Draw the match text, from Intro Font.ttf
+##        '''-vf drawtext="fontfile=/Library/Fonts/Trebuchet MS.ttf: text=%r:'''
+##        # From 3 to 9 sec, and make color white.
+##        '''enable='between(t,3,9)': fontcolor=white: '''
+##        # Size, and text position.
+##        '''fontsize=36: x=text_w/16: y=(h-text_h)/2" '''
+##        # Output file location.
+##        '''%r''')
+    # Needs text and output location.
+
+    for f in filtered_files:
+        # TO make output file, get basename from f and put it on target_dir
+        basename = os.path.basename(f)
+        out_file = os.path.join(namespace.target_dir, basename)
+
+        # Also the text in the box is the name of the original video.
+        text = basename.rstrip('.mp4').rstrip('.mov')
+
+        command = ffmpeg_command(text, out_file)
+
+##        print("Command: %s %s"%(command[0],' '.join(map(repr,command[1:]))))
+        logging.debug(subprocess.list2cmdline(command))
+        
+        process = subprocess.Popen(command, stderr = subprocess.PIPE)
+
+        # Monitor the process as it runs.
+        while process.poll() is None:
+            x = process.stderr.readline()
+            if x:logging.debug("ffmepg:%r" % x.decode(errors='replace').rstrip('\n'))
+            time.sleep(.1)
+        x = process.stderr.readline()
+        if x: logging.debug("ffmepg:%r" % x.decode(errors='replace').rstrip('\n'))
+
+        logging.debug("ffmpeg exited with status %d." % process.poll())
 
 parser_finish.set_defaults(operation = finish)
 del parser_finish # No need to keep varible.
@@ -465,5 +630,6 @@ def main(args = None):
         raise
 
 if __name__ == '__main__':
+    main(['-v','finish','Results/Saturday 3-11-17_ND/Practice 3 of 78.mp4','.'])
     #main(['parse', '-', '-', 'example_folder'])
     #main()

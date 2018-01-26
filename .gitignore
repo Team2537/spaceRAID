@@ -2,7 +2,8 @@
 Examples/
 Results/
 frame_log.txt
-
+Intro Font.ttf
+Video Intro.mov
 # Tesseract Data Files
 *.bin
 tesseract_opencl_profile_devices.dat
