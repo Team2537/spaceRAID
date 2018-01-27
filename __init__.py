@@ -630,6 +630,6 @@ def main(args = None):
         raise
 
 if __name__ == '__main__':
-    main(['-v','finish','Results/Saturday 3-11-17_ND/Practice 3 of 78.mp4','.'])
+    #main(['-v','finish','Results/Saturday 3-11-17_ND/Practice 3 of 78.mp4','.'])
     #main(['parse', '-', '-', 'example_folder'])
-    #main()
+    main()
