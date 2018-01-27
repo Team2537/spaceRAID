@@ -32,6 +32,7 @@ upload    Upload the file to youtube.
 run       Do parse, finish, and probably upload. Run will be done if no
           command is given if I can figure out how to add that.
 """
+__author__ = "Matthew Schweiss and Rohan Uttamsingh"
 __version__ = "1.1"
 
 # WARNING, this is not stable unless the current directory is the directory
