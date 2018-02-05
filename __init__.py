@@ -309,24 +309,41 @@ parser_finish.add_argument("-r","--recurse",action="store_true",default=False,
 parser_finish.add_argument("-d","--depth",action="store",type=int,default=None,
                            help="Recursize depth of the specified folders.\n"
                                "Implies -r")
-def ffmpeg_command(text, output):
-    # Command to finish the video.
-    return ['/usr/local/Cellar/ffmpeg/3.4.1/bin/ffmpeg',
-            '-n', # Don't overwrite files.
-            '-hide_banner', # Just hide the banner, don't show that.
-            # This line appears to break everything.
-            '-loglevel', 'warning', # Less output
-            '-i', "Video Intro.mov", # Get Template Intro
-            '-vf', # Add a video filter for the text.
-            
-            r'drawtext=fontfile=/Library/Fonts/Trebuchet\ MS.ttf: ' # Font
-            'text=%r: ' % text + # The changing text.
-            "enable='between(t,3,9)':" # Show only from 3s to 9s.
-            'fontcolor=white:' # White text
-            'fontsize=36:' # 36 Point Font.
-            'x=text_w/16:' # Text is left justified on the left.
-            'y=(h-text_h)/2', # Text is center justified vertically.
+##def ffmpeg_command(text, output):
+##    # Command to finish the video.
+##    return ['/usr/local/Cellar/ffmpeg/3.4.1/bin/ffmpeg',
+##            '-n', # Don't overwrite files.
+##            '-hide_banner', # Just hide the banner, don't show that.
+##            # This line appears to break everything.
+##            '-loglevel', 'warning', # Less output
+##            '-i', "Video Intro.mov", # Get Template Intro
+##            '-vf', # Add a video filter for the text.
+##
+##            r'drawtext=fontfile=/Library/Fonts/Trebuchet\ MS.ttf: ' # Font
+##            'text=%r: ' % text + # The changing text.
+##            "enable='between(t,3,9)':" # Show only from 3s to 9s.
+##            'fontcolor=white:' # White text
+##            'fontsize=36:' # 36 Point Font.
+##            'x=text_w/16:' # Text is left justified on the left.
+##            'y=(h-text_h)/2', # Text is center justified vertically.
+##
+##            output]
 
+#https://stackoverflow.com/questions/10725225/ffmpeg-single-quote-in-drawtext
+def ffmpeg_command(text, intro, video, output, framerate='30000/1001',
+                   fontfile="/Library/Fonts/Trebuchet MS.ttf"):
+    return ['/usr/local/Cellar/ffmpeg/3.4.1/bin/ffmpeg',
+            '-y', '-nostdin', '-nostats', '-i', intro, '-i', video,
+            '-filter_complex', (
+                '[0:v]drawtext=enable=between(t\,3\,9):'
+                'fontcolor=white:fontfile=%r:'
+                'fontsize=36:text=%r:'
+                'x=text_w/16:y=(h-text_h)/2[i1];'
+                '[0:a][1:a]concat=n=2:v=0:a=1[outa];'
+                '[i1][1:v]scale2ref[i2][v2];'
+                '[i2][v2]concat=n=2[outv]' % (fontfile, text)),
+            '-map', '[outv]', '-map', '[outa]', '-r', framerate,
+            '-preset', 'ultrafast',
             output]
 
 def finish(namespace):
@@ -420,6 +437,12 @@ def finish(namespace):
 ##        '''%r''')
     # Needs text and output location.
 
+    # In order to build the output.
+    # 1) Get the video dimensions to create the graphics from the source video.
+    #    May need to also get the codec.
+    # 2) Build the intro graphic, pipe it to a named stream.
+    # 3) Concat the two videos together and write out to disk.
+
     for f in filtered_files:
         # TO make output file, get basename from f and put it on target_dir
         basename = os.path.basename(f)
@@ -428,11 +451,10 @@ def finish(namespace):
         # Also the text in the box is the name of the original video.
         text = basename.rstrip('.mp4').rstrip('.mov')
 
-        command = ffmpeg_command(text, out_file)
+        command = ffmpeg_command(text, 'Video Intro.mov', f, out_file)
 
-##        print("Command: %s %s"%(command[0],' '.join(map(repr,command[1:]))))
         logging.debug(subprocess.list2cmdline(command))
-        
+
         process = subprocess.Popen(command, stderr = subprocess.PIPE)
 
         # Monitor the process as it runs.
@@ -632,5 +654,6 @@ def main(args = None):
 
 if __name__ == '__main__':
     #main(['-v','finish','Results/Saturday 3-11-17_ND/Practice 3 of 78.mp4','.'])
+    #main(['-v','parse','/Users/matthewschweiss/Documents/Robotics/spaceRAID/Examples/Saturday 3-11-17_ND.mp4','/Users/matthewschweiss/Documents/Robotics/spaceRAID/'])
     #main(['parse', '-', '-', 'example_folder'])
     main()
