@@ -189,8 +189,8 @@ parser.set_defaults(log_level = logging.ERROR)
 
 parser.add_argument("--version",action="version",version="%(prog)s "+__version__)
 
-parser.add_argument("-l", "--log", "--log_file", type = PathType(exists = None),
-                    default='-', help =
+parser.add_argument("-l", "--log", "--log-file", type = PathType(exists = None),
+                    default="-", help =
                     "Logging file for all debug info from logging.")
 
 # Subparsers / Operations
