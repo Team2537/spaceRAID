@@ -12,8 +12,6 @@ spaceraid {run,parse,finish,upload,test} source_file ... target_dir
 --version             Print version info and exit.
 -v --verbose          Turn on verbose reporting.
 -l --log file         Logging file.
--d --dryrun           Don't read any files or access internet. List what would
-                      be done.
 
 test      Run a test to see if the video is readable.
 -i  --image_folder   For test, a folder of images can be specified instead of
@@ -176,7 +174,7 @@ def walklevel(path, depth = 1):
         if num_sep + depth <= num_sep_this:
             del dirs[:]
 
-MATCH_JSON_FILE = "match_results.json"
+MATCH_DATA_FILE = "match_results.json"
 #################################### Parser ####################################
 parser = argparse.ArgumentParser(prog = "spaceraid")
 
@@ -190,10 +188,6 @@ parser.add_argument("-v", "--verbose", dest = "log_level", action="store_const",
 parser.set_defaults(log_level = logging.ERROR)
 
 parser.add_argument("--version",action="version",version="%(prog)s "+__version__)
-
-parser.add_argument("-d", "--dryrun", action = "store_true", default = False,
-                    help = "Don't read any files or access the internet. "
-                           "List what would be done.")
 
 parser.add_argument("-l", "--log", "--log_file", type = PathType(exists = None),
                     default='-', help =
@@ -269,16 +263,16 @@ def parse(namespace):
                     # Make the directory.
                     os.mkdir(out_dir)
                     logging.debug("Created folder %r" % out_dir)
-                    f = os.path.join(out_dir, MATCH_JSON_FILE)
+                    data_file = os.path.join(out_dir, MATCH_DATA_FILE)
                 elif os.path.isdir(out_dir):
                     # Then store the file at "match_results.json"
-                    f = os.path.join(out_dir, MATCH_JSON_FILE)
-                with open(f, "w") as out_file:
-                    # Without other data, use str to serialize.
-                    json.dump(results, out_file, default=str, indent=True)
-            except ValueError:
-                # The file stopped existing. Error.
-                raise IOError("Video stopped existing while opening.")
+                    data_file = os.path.join(out_dir, MATCH_DATA_FILE)
+                else:
+                    data_file = None
+                if data_file:
+                    with open(data_file, "w") as out_file:
+                        # Without other data, use str to serialize.
+                        json.dump(results, out_file, default=str, indent=True)
             finally:
                 video_loader.close_image()
     finally:
@@ -309,6 +303,7 @@ parser_finish.add_argument("-r","--recurse",action="store_true",default=False,
 parser_finish.add_argument("-d","--depth",action="store",type=int,default=None,
                            help="Recursize depth of the specified folders.\n"
                                "Implies -r")
+
 ##def ffmpeg_command(text, output):
 ##    # Command to finish the video.
 ##    return ['/usr/local/Cellar/ffmpeg/3.4.1/bin/ffmpeg',
