@@ -259,7 +259,7 @@ def parse(namespace):
                 video_loader.close_image()
                 # Write the results to file.
                 out_dir = namespace.target_dir
-                if not os.path.exists(out_dir) and out.endswith("/"):
+                if not os.path.exists(out_dir):
                     # Make the directory.
                     os.mkdir(out_dir)
                     logging.debug("Created folder %r" % out_dir)
@@ -269,6 +269,7 @@ def parse(namespace):
                     data_file = os.path.join(out_dir, MATCH_DATA_FILE)
                 else:
                     data_file = None
+                    raise ValueError("No data_file.")
                 if data_file:
                     with open(data_file, "w") as out_file:
                         # Without other data, use str to serialize.
