@@ -337,10 +337,11 @@ def ffmpeg_command(source, start_time, stop_time, output):
     return ['ffmpeg',
 ##              # This line appears to break everything.
             '-loglevel', 'warning', # Less output
-##                '-codec copy', # Don't re-encode, keep the same encoding. Fast
             '-ss', str(start_time),
             '-i', source,
             '-t', str(stop_time - start_time),
+            '-codec', 'copy', # Don't re-encode, keep the same encoding. Fast
+
             output]
 
 def write_files(video, timings):
