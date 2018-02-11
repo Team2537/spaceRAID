@@ -285,6 +285,11 @@ def parse(namespace):
     finally:
         process_frames.deinit() # Close the threading even on error.
 
+    # Finished Processing!
+    # Now save videos.
+    timings = find_matches.time_video(results)
+    find_matches.write_files(video, timings)
+
 parser_parse.set_defaults(operation = parse)
 
 del parser_parse # No need to keep varible.
