@@ -627,14 +627,14 @@ parser.add_argument('target_dir',type=PathType(type=('dir','file').__contains__,
 def main(args = None):
     results = parser.parse_args(args)
 
+    # -l implementation.
+    logging.getLogger().setLevel(results.log_level)
+    logging.info("Passed args: %r" % args)
+
     # Flatten the source_files varible to just be a list of files.
     # Not a concentric list of files.
     results.source_files = sum(results.source_files, [])
     pprint(vars(results))
-
-    # -l implementation.
-    logging.getLogger().setLevel(results.log_level)
-    logging.info("Passed args: %r" % args)
 
     try:
         results.operation(results)
