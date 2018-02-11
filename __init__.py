@@ -193,6 +193,8 @@ parser.add_argument("-l", "--log", "--log-file", type = PathType(exists = None),
                     default="-", help =
                     "Logging file for all debug info from logging.")
 
+parser.add_argument("-d", "--data-log", type = PathType(exists = None))
+
 # Subparsers / Operations
 subparsers = parser.add_subparsers(
     dest = "operation_name", title = "Operations",
@@ -258,9 +260,8 @@ def parse(namespace):
                     raise IOError("Video stopped existing while opening.")
 
                 global results
-                results = find_matches.scan_video(video)
-                pprint(results)
-                # Close the windows.
+                results = find_matches.scan_video(video, get_data_log(namespace))
+
                 video_loader.close_image()
                 # Write the results to file.
                 out_dir = namespace.target_dir
@@ -628,6 +629,14 @@ parser.add_argument('source_files',nargs=1,action ="append",
 parser.add_argument('target_dir',type=PathType(type=('dir','file').__contains__,
                                                dash_ok=True, exists = None),
                     help = "Output folder for processed videos.")
+
+def get_data_log(namespace):
+    """Open the data log if it is not already."""
+    if isinstance(namespace.data_log, str):
+        namespace.data_log = open(namespace.data_log, "a+", buffering = 1)
+
+        namespace.data_log.seek(0)
+    return namespace.data_log
 
 def main(args = None):
     results = parser.parse_args(args)

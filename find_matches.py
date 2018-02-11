@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Takes the video feed and looks for signs that a match is there."""
 import os
+import csv
 import sys
 import math
 import queue
@@ -48,6 +49,14 @@ MOMENT_IDENTICAL_PERCENTAGE = 4./5 # Percentage required of identical frames.
 ##
 ##        self.worker_threads = []
 
+try:
+    next
+except NameError:
+    def next(iterator):
+        for obj in iterator:
+            return obj
+        return default
+
 # https://stackoverflow.com/questions/89178/
 # in-python-what-is-the-fastest-algorithm-for-removing-duplicates-from-a-list-so
 def unique(items):
@@ -62,13 +71,49 @@ def unique(items):
 
     return keep
 
-def read_moment(video, frame_count = None):
+def read_moment(video, data_log = None):
     """Read text at the frame number (frames from start of video).
-    If frame_count is less than 0, read from current video position.
+
+    If data_log is specified, it is a tsv file with data that has aleady been
+    processed from this video file. Cache file could also be blank.
     """
-    # In python3, None < 0 throws an error, so make sure it is not None.
-    if frame_count is None:
-        frame_count = -1
+    # First validate data_log is it exists.
+    if data_log is not None:
+        # This should be an object not a path.
+
+        # Try to check if the file is readable.
+        try:
+            readable = data_log.readable()
+        except AttributeError:
+            # Python 2, no "readable" attribute.
+            logging.debug("File object did not have a 'readable()' attribute.\n"
+                          "Normal for python 2.")
+
+            try:
+                data_log.read(0) # Try to read nothing, errors if can't read.
+            except IOError:
+                readable = False
+            else: # Successfully read.
+                readable = True
+
+        # Try to check if the file is writable.
+        try:
+            writable = data_log.writable()
+        except AttributeError:
+            # Python 2, no "writable" attribute.
+            logging.debug("File object did not have a 'writable()' attribute.\n"
+                          "Normal for python 2.")
+
+            try:
+                data_log.write("") # Try to write nothing, errors if can't write.
+            except IOError:
+                writable = False
+            else: # Successfully wrote.
+                writable = True
+    else:
+        # There is no data_log.
+        readable = writable = None
+
     # For different MOMENT_MINUMUM_FRAMES
     # 1: Take next frame.
     # 2: Take 1 previous frame and next 1.
@@ -76,25 +121,62 @@ def read_moment(video, frame_count = None):
     # 4: Take 2 previous frames and next 2.
     # 5: Take 2 previous frames and next 3.
     #...
-    frames = [] # The frames that need to be analyized.
     moment = Counter() # Counter to put the frame results in.
 
     # Set the video back MOMENT_MINIMUM_FRAMES // 2 frames.
-    if frame_count < 0:
-        frame_count = video.get_frame_index()
+    frame_count = video.get_frame_index()
 
     video.set_frame_index(frame_count - MOMENT_MINIMUM_FRAMES // 2)
+
+    # The frames that need to be analyized.
+    frames = [video.get_frame() for num in range(MOMENT_MINIMUM_FRAMES)]
 
     # Add the inital frames to the list.
     for num in range(MOMENT_MINIMUM_FRAMES):
         frames.append(video.get_frame())
+
+    if readable:
+        cache_reader = csv.reader(data_log)
+
+    if writable:
+        cache_writer = csv.writer(data_log)
 
     # Now process the list.
     for frame in frames:
         if frame is None:
             logging.error("frame is None")
             continue
-        name, time = process_frames.read_image(frame)
+
+        # First, if there are cached results, use those.
+        if readable:
+            result = next(cache_reader, None)
+            if result is not None:
+                frame_index, match_type, match_number, total_matches, time = result
+
+                name = process_frames.Name_Result(match_type, match_number, total_matches)
+
+                if int(frame_index) != frame_count:
+                    logging.error("Data file sync failed with current readings.")
+                    readable = False # Readings did not match.
+                    writable = False # Don't write to a file that can't be synced.
+            else:
+                readable = None # Depleted, nothing else to read.
+
+        if not readable:
+            # Specifically written so if readable fails, this will catch.
+            name, time = process_frames.read_image(frame)
+
+            match_type = name.match_type
+            match_number = name.match_number
+            total_matches = name.total_matches
+
+            # Now save to file if possible.
+            if writable:
+                cache_writer.writerow((int(frame_count),
+                                       match_type,
+                                       match_number,
+                                       total_matches,
+                                       time))
 
         # Add another frame if this one failed.
         # But if we have reached max frames, do nothing.
@@ -104,6 +186,9 @@ def read_moment(video, frame_count = None):
 
         # Save the results.
         moment[(name, time)] += 1
+
+        # Increment the frame_count
+        frame_count += 1
 
     # Now take the results and figure out the reading. Lets do some scrying.
     # We are looking for identical items. Are there more than
@@ -129,7 +214,7 @@ def read_moment(video, frame_count = None):
 VERBOSE = 2
 SHOW_VISUAL = True
 
-def scan_video(video):
+def scan_video(video, data_log = None):
     """Complete an inital scan of the video, trying to find all matches."""
     # Set up the video stream.
     video.set_timestamp(0)
@@ -145,7 +230,7 @@ def scan_video(video):
         while timestamp < video_length:
             if SHOW_VISUAL:
                 video_loader.show_image(video.grab_frame())
-            name, time = read_moment(video)
+            name, time = read_moment(video, data_log)
             match_data[timestamp] = name, time
             if name is not '' or time is not '':
                 # If anything.

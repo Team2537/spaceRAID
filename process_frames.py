@@ -237,8 +237,16 @@ class Name_Result(object):
             raise ValueError("match_type is not in NAME_FORMATS.")
         # Now the other varibles: match_number, total_matches, and match time.
         # None, is allowed for all values.
-        self.match_number   = int(match_number) if match_number is not None else None
-        self.total_matches  = int(total_matches)if total_matches is not None else None
+        if match_number == '' or match_number is None:
+            self.match_number = None
+        else:
+            self.match_number = int(match_number)
+
+        if total_matches == '' or total_matches is None:
+            self.total_matches = None
+        else:
+            self.total_matches = int(total_matches)
+
         return self
 
     def __bool__(self):
