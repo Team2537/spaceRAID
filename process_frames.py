@@ -621,9 +621,11 @@ def deinit():
     TIME_POOL = queue.Queue(TIME_POOL_SIZE)
     cv2.destroyAllWindows()
 
-def read_image(image):#, debug = False):
+def read_image(image, name_hook = None, time_hook = None):
     """Take image files and try to read the words from them.
        Takes a numpy image.
+       name_hook, and time_hook should be functions that are called with the
+       values for name and hook, preprocessed and postprocessed.
     """
     assert not NAME_POOL.empty(), "process_frames.NAME_POOL not initalized."
     assert not TIME_POOL.empty(), "process_frames.TIME_POOL not initalized."
@@ -720,6 +722,9 @@ def read_image(image):#, debug = False):
     else:
         time = None
 
+    # Send the values to the hooks, if present.
+    if name_hook: name_hook(name_raw, name)
+    if time_hook: time_hook(time_raw, time_ext, time)
     # Log the initial reading and conversion.
     # INFO:root:Name Read: 'Qualmution 5 M 78\n\n'   -> 'Qualification 5 of 78'.
     # INFO:root:Time Read: '13 \n\n' (' 3 \n\n')     -> '13'.
