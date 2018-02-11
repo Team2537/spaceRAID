@@ -258,7 +258,7 @@ def parse(namespace):
                 except ValueError:
                     # The file stopped existing. Error.
                     raise IOError("Video stopped existing while opening.")
-
+                
                 global results
                 results = find_matches.scan_video(video, get_data_log(namespace))
 
@@ -275,7 +275,6 @@ def parse(namespace):
                     data_file = os.path.join(out_dir, MATCH_DATA_FILE)
                 else:
                     data_file = None
-                    raise ValueError("No data_file.")
                 if data_file:
                     with open(data_file, "w") as out_file:
                         # Without other data, use str to serialize.
@@ -288,8 +287,8 @@ def parse(namespace):
     # Finished Processing!
     # Now save videos.
     timings = find_matches.time_video(results)
-    find_matches.write_files(video, timings)
-
+    find_matches.write_files(video, timings, out_dir)
+    
 parser_parse.set_defaults(operation = parse)
 
 del parser_parse # No need to keep varible.

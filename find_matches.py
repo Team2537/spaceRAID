@@ -344,7 +344,7 @@ def ffmpeg_command(source, start_time, stop_time, output):
 
             output]
 
-def write_files(video, timings):
+def write_files(video, timings, output_folder = None):
     """Write the videos that are found in the output."""
     # First, get rid of any recongnizable extension.
     video_name = video.name
@@ -352,7 +352,8 @@ def write_files(video, timings):
     elif video_name.endswith(".mov"): video_name = video_name.rstrip(".mov")
 
     # Create Output Folder.
-    output_folder = os.path.join("./Results/", video_name)
+    if output_folder is None:
+        output_folder = os.path.join("./Results/", video_name)
     if not os.path.exists(output_folder):
         os.mkdir(output_folder)
 
