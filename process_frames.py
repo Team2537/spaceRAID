@@ -100,10 +100,8 @@ ALLOW_FAILURE = True
 ADAPTIVE_CLASSIFIER = True
 
 # Logging setup.
-logger = logging.getLogger('process_frames')
-logger.addHandler(logging.FileHandler('./frame_log.txt'))
-
-logging = logger
+logging = logging.getLogger('process_frames')
+#logging.addHandler(logging.FileHandler('./frame_log.txt'))
 
 # Basically, try to convert everything to one of these formats.
 NAME_FORMATS = {
