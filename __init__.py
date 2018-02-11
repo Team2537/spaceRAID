@@ -251,7 +251,12 @@ def parse(namespace):
                 logging.error("File %r does not exists." % f)
 
             try:
-                video = video_loader.Video(f)
+                try:
+                    video = video_loader.Video(f)
+                except ValueError:
+                    # The file stopped existing. Error.
+                    raise IOError("Video stopped existing while opening.")
+
                 global results
                 results = find_matches.scan_video(video)
                 pprint(results)
