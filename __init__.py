@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
-Takes an video file (very long) and slowly pulls the matches in the video out
+Takes an video file (approx 10h) and slowly pulls the matches in the video out
 and makes those seperate files.
 
 Various possibilites and operations.
-test, parse, finish, upload, run
+test, parse, finish, upload
 
-spaceraid {run,parse,finish,upload,test} source_file ... target_dir
+spaceraid {parse,finish,upload,test} source_file ... target_dir
 (global)
 --help
 --version             Print version info and exit.
@@ -288,7 +288,8 @@ def parse(namespace):
     # Now save videos.
     timings = find_matches.time_video(results)
     find_matches.write_files(video, timings, out_dir)
-    
+
+parser_parse.add_argument("-d", "--data-log", type = PathType(exists = None))
 parser_parse.set_defaults(operation = parse)
 
 del parser_parse # No need to keep varible.
@@ -303,8 +304,8 @@ parser_finish = subparsers.add_parser("finish", help =
 
 parser_finish.add_argument(
     "-t","--tags",choices=("All","Yellow","Green"),default = "Green",
-    help = ("Look at the eXtra tags and only finish tags tagged with"
-            "green and not red. Default is green. Yellow is will"
+    help = ("Look at the eXtra tags and only finish tags tagged with "
+            "green and not red. Default is green. Yellow is will "
             "process videos with yellow flags but not green."))
 # Need to allow folders for this to be of use.
 parser_finish.add_argument("-r","--recurse",action="store_true",default=False,
@@ -338,7 +339,7 @@ parser_finish.add_argument("-d","--depth",action="store",type=int,default=None,
 #https://stackoverflow.com/questions/10725225/ffmpeg-single-quote-in-drawtext
 def ffmpeg_command(text, intro, video, output, framerate='30000/1001',
                    fontfile="/Library/Fonts/Trebuchet MS.ttf"):
-    return ['/usr/local/Cellar/ffmpeg/3.4.1/bin/ffmpeg',
+    return ['/usr/local/bin/ffmpeg',
             '-y', '-nostdin', '-nostats', '-i', intro, '-i', video,
             '-filter_complex', (
                 '[0:v]drawtext=enable=between(t\,3\,9):'
@@ -441,6 +442,12 @@ def finish(namespace):
 ##        '''fontsize=36: x=text_w/16: y=(h-text_h)/2" '''
 ##        # Output file location.
 ##        '''%r''')
+    
+    # Before the ffmpeg command, make sure the folder exists.
+    folder = namespace.target_dir
+    if not os.path.exists(folder):
+        os.mkdir(folder)
+    
     # Needs text and output location.
 
     # In order to build the output.
@@ -455,7 +462,7 @@ def finish(namespace):
         out_file = os.path.join(namespace.target_dir, basename)
 
         # Also the text in the box is the name of the original video.
-        text = basename.rstrip('.mp4').rstrip('.mov')
+        text, _ = os.path.splitext(basename)
 
         command = ffmpeg_command(text, 'Video Intro.mov', f, out_file)
 
@@ -466,12 +473,17 @@ def finish(namespace):
         # Monitor the process as it runs.
         while process.poll() is None:
             x = process.stderr.readline()
-            if x:logging.debug("ffmepg:%r" % x.decode(errors='replace').rstrip('\n'))
-            time.sleep(.1)
+            if x:
+                logging.debug("ffmepg:%r" % x.decode(errors='replace').rstrip('\n'))
+            else:
+                time.sleep(.1)
         x = process.stderr.readline()
         if x: logging.debug("ffmepg:%r" % x.decode(errors='replace').rstrip('\n'))
 
         logging.debug("ffmpeg exited with status %d." % process.poll())
+
+        if process.poll() != 0:
+            logging.error("ffmpeg failed with status %d." % process.poll())
 
 parser_finish.set_defaults(operation = finish)
 del parser_finish # No need to keep varible.
