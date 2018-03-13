@@ -68,6 +68,11 @@ from extract_lib import extract_image
 MATCH_NAME_RECT = (107, 224, 103,  16)
 MATCH_TIME_RECT = (244, 243,  28,  13)
 
+# Settings for Scoreboard at top. NEW
+#                  name_x , name_y,  nw, nh
+MATCH_NAME_RECT = ( 88,  56, 103, 16)
+MATCH_TIME_RECT = (243,  11,  28, 13)
+
 DEFAULT_SIZE = (512, 288)
 
 # And for threading
@@ -487,7 +492,7 @@ def smart_read_name(name_text):
         # num1 should be less than num2, otherwise num2 is wrong.
         # If num1 is None, this test means nothing, but in python3 it would
         # throw an error.
-        if num1 != None and num1 > num2:
+        if num1 != None and num2 != None and num1 > num2:
             num2 = None
 
         return Name_Result(name_text_template, num1, num2)
@@ -495,7 +500,7 @@ def smart_read_name(name_text):
     # If we still don't have a solution, error.
     raise RuntimeError(
         "smart_read_name(%r) found more than two numbers in a template (%r). "
-        "This is not valid." % (name_text, name_text_template))
+        "This is not implemented." % (name_text, name_text_template))
 #*******************************************************************************
 
 def smart_read_time(reg_time, ext_time):
@@ -701,7 +706,7 @@ def read_image(image, name_hook = None, time_hook = None):
         except TypeError:
             # Rarely, this can fail when there are no contour lines found.
             # The extracted just should be the same.
-            logging.error("Image Extraction failed with error %r." % sys.exc_value)
+            logging.error("Image Extraction failed with error %r." % sys.exc_info()[1])
             time_ext_image = time_image
 
         read_time = TIME_POOL.get()
